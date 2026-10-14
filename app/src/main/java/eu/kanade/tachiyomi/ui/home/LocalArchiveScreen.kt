@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.NavigateNext
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.MenuBook
@@ -62,6 +63,7 @@ import coil3.compose.AsyncImage
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.more.settings.screen.SettingsDataScreen
 import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.relativeTimeSpanString
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import kotlinx.coroutines.awaitCancellation
 import tachiyomi.domain.chapter.model.ArchiveReadingProgress
@@ -96,6 +98,7 @@ class LocalArchiveScreen(private val recursive: Boolean, private val path: Strin
         val storagePreferences = remember { Injekt.get<StoragePreferences>() }
         val folderPicker = SettingsDataScreen.storageLocationPicker(storagePreferences.localSourceDirectory(), readOnly = true)
         var query by rememberSaveable { mutableStateOf("") }
+        var searchVisible by rememberSaveable { mutableStateOf(false) }
         val libraryPreferences = remember { OfflineLibraryPreferences() }
         val sortPreference = remember { libraryPreferences.sort() }
         val descendingPreference = remember { libraryPreferences.descending() }
@@ -104,13 +107,14 @@ class LocalArchiveScreen(private val recursive: Boolean, private val path: Strin
         val favoritesPreference = remember { libraryPreferences.favorites() }
         val statusPreference = remember { libraryPreferences.status() }
         val favoritesOnlyPreference = remember { libraryPreferences.favoritesOnly() }
-        val listViewPreference = remember { libraryPreferences.listView() }
+        val viewModePreference = remember { libraryPreferences.viewMode() }
         val coverSizePreference = remember { libraryPreferences.coverSize() }
         val favorites by favoritesPreference.collectAsState()
         val statusValue by statusPreference.collectAsState()
         val favoritesOnly by favoritesOnlyPreference.collectAsState()
-        val listView by listViewPreference.collectAsState()
+        val viewModeValue by viewModePreference.collectAsState()
         val coverSize by coverSizePreference.collectAsState()
+        val viewMode = OfflineLibraryViewMode.entries.firstOrNull { it.name == viewModeValue } ?: OfflineLibraryViewMode.GRID
         val status = OfflineReadingFilter.entries.firstOrNull { it.name == statusValue } ?: OfflineReadingFilter.ALL
         val sort = OfflineLibrarySort.entries.firstOrNull { it.name == sortValue } ?: OfflineLibrarySort.TITLE
         val filtered = remember(state.entries, query, sort, descending, state.progress, favorites, favoritesOnly, status) {
@@ -149,7 +153,14 @@ class LocalArchiveScreen(private val recursive: Boolean, private val path: Strin
                 }
             }
         }
-        BackHandler(enabled = navigator.canPop) { navigator.pop() }
+        BackHandler(enabled = searchVisible || navigator.canPop) {
+            if (searchVisible) {
+                searchVisible = false
+                query = ""
+            } else {
+                navigator.pop()
+            }
+        }
         Scaffold(
             topBar = {
                 AppBar(
@@ -175,6 +186,21 @@ class LocalArchiveScreen(private val recursive: Boolean, private val path: Strin
                         IconButton(onClick = model::refresh, enabled = !state.scanning) {
                             Icon(Icons.Outlined.Refresh, stringResource(KMR.strings.offline_rescan))
                         }
+                        IconButton(
+                            onClick = {
+                                if (searchVisible) {
+                                    searchVisible = false
+                                    query = ""
+                                } else {
+                                    searchVisible = true
+                                }
+                            },
+                        ) {
+                            Icon(
+                                if (searchVisible) Icons.Outlined.Close else Icons.Outlined.Search,
+                                stringResource(if (searchVisible) MR.strings.action_close else MR.strings.action_search),
+                            )
+                        }
                     },
                 )
             },
@@ -187,14 +213,16 @@ class LocalArchiveScreen(private val recursive: Boolean, private val path: Strin
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     )
                 }
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    singleLine = true,
-                    label = { Text(stringResource(MR.strings.action_search)) },
-                    leadingIcon = { Icon(Icons.Outlined.Search, null) },
-                )
+                if (searchVisible) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        singleLine = true,
+                        label = { Text(stringResource(MR.strings.action_search)) },
+                        leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                    )
+                }
                 if (state.scanning || state.opening != null) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
@@ -202,11 +230,11 @@ class LocalArchiveScreen(private val recursive: Boolean, private val path: Strin
                     OfflineLibraryControls(
                         status,
                         favoritesOnly,
-                        listView,
+                        viewMode,
                         coverSize,
                         onStatus = { statusPreference.set(it.name) },
                         onFavoritesOnly = favoritesOnlyPreference::set,
-                        onListView = listViewPreference::set,
+                        onViewMode = { viewModePreference.set(it.name) },
                         onCoverSize = coverSizePreference::set,
                     )
                     OfflineLibrarySortControl(
@@ -252,9 +280,9 @@ class LocalArchiveScreen(private val recursive: Boolean, private val path: Strin
                             ),
                         )
                     }
-                } else if (recursive && !listView) {
+                } else if (recursive && viewMode == OfflineLibraryViewMode.GRID) {
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(coverSize.coerceIn(96, 176).dp),
+                        columns = GridCells.Adaptive(coverSize.coerceIn(72, 176).dp),
                         contentPadding = PaddingValues(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -278,12 +306,16 @@ class LocalArchiveScreen(private val recursive: Boolean, private val path: Strin
                         items(filtered, key = { it.path }) { entry ->
                             ListItem(
                                 headlineContent = { Text(entry.name) },
-                                supportingContent = if (recursive) ({ Text(archiveProgressLabel(state.progress[entry.path])) }) else null,
+                                supportingContent = when {
+                                    recursive && viewMode == OfflineLibraryViewMode.DETAILS -> ({ ArchiveDetails(entry, state.progress[entry.path]) })
+                                    recursive -> ({ Text(archiveProgressLabel(state.progress[entry.path])) })
+                                    else -> null
+                                },
                                 leadingContent = {
                                     if (entry.isDirectory) {
                                         Icon(Icons.Outlined.Folder, null, Modifier.size(40.dp))
                                     } else {
-                                        ArchiveCover(entry, model, state.revision, Modifier.width(48.dp))
+                                        ArchiveCover(entry, model, state.revision, Modifier.width(if (recursive && viewMode == OfflineLibraryViewMode.DETAILS) 56.dp else 48.dp))
                                     }
                                 },
                                 trailingContent = {
@@ -300,6 +332,39 @@ class LocalArchiveScreen(private val recursive: Boolean, private val path: Strin
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ArchiveDetails(entry: LocalArchiveEntry, progress: ArchiveReadingProgress?) {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (entry.parentPath.isNotBlank()) {
+            Text(
+                text = entry.parentPath,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (!entry.isDirectory && entry.size > 0L) {
+            Text(
+                text = stringResource(KMR.strings.offline_file_size, android.text.format.Formatter.formatShortFileSize(context, entry.size)),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+        if (entry.modified > 0L) {
+            Text(
+                text = stringResource(KMR.strings.offline_file_modified, relativeTimeSpanString(entry.modified)),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+        if (!entry.isDirectory) {
+            Text(archiveProgressLabel(progress), style = MaterialTheme.typography.labelSmall)
         }
     }
 }

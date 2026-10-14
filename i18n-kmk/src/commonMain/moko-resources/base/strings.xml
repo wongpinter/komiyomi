@@ -13,6 +13,10 @@
     <string name="offline_grid_view">Grid view</string>
     <string name="offline_list_view">List view</string>
     <string name="offline_cover_size">Cover size</string>
+    <string name="offline_covers_compact">Compact</string>
+    <string name="offline_details_view">Details</string>
+    <string name="offline_file_size">Size: %1$s</string>
+    <string name="offline_file_modified">Modified %1$s</string>
     <string name="offline_covers_small">Small</string>
     <string name="offline_covers_medium">Medium</string>
     <string name="offline_covers_large">Large</string>
