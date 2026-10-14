@@ -12,7 +12,6 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.viewpager.widget.ViewPager
 import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.model.ChapterTransition
 import eu.kanade.tachiyomi.ui.reader.model.InsertPage
@@ -37,8 +36,6 @@ abstract class PagerViewer(
     @ColorInt private val seedColor: Int? = null,
     // KMK <--
 ) : Viewer {
-
-    val downloadManager: DownloadManager by injectLazy()
 
     val scope = MainScope()
 

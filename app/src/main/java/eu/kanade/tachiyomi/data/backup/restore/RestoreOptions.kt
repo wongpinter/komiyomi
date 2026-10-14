@@ -9,31 +9,18 @@ data class RestoreOptions(
     val libraryEntries: Boolean = true,
     val categories: Boolean = true,
     val appSettings: Boolean = true,
-    val extensionStores: Boolean = true,
     val sourceSettings: Boolean = true,
-    // SY -->
-    val savedSearchesFeeds: Boolean = true,
-    // SY <--
 ) {
 
     fun asBooleanArray() = booleanArrayOf(
         libraryEntries,
         categories,
         appSettings,
-        extensionStores,
         sourceSettings,
-        // SY -->
-        savedSearchesFeeds,
-        // SY <--
     )
 
     fun canRestore() =
-        libraryEntries ||
-            categories ||
-            appSettings ||
-            extensionStores ||
-            sourceSettings /* SY --> */ ||
-            savedSearchesFeeds /* SY <-- */
+        libraryEntries || categories || appSettings || sourceSettings
 
     companion object {
         val options = persistentListOf(
@@ -53,36 +40,17 @@ data class RestoreOptions(
                 setter = { options, enabled -> options.copy(appSettings = enabled) },
             ),
             Entry(
-                label = MR.strings.extensionStores,
-                getter = RestoreOptions::extensionStores,
-                setter = { options, enabled -> options.copy(extensionStores = enabled) },
-            ),
-            Entry(
                 label = MR.strings.source_settings,
                 getter = RestoreOptions::sourceSettings,
                 setter = { options, enabled -> options.copy(sourceSettings = enabled) },
             ),
-            // SY -->
-            Entry(
-                // KMK-->
-                label = KMR.strings.saved_searches_feeds,
-                // KMK <--
-                getter = RestoreOptions::savedSearchesFeeds,
-                setter = { options, enabled -> options.copy(savedSearchesFeeds = enabled) },
-            ),
-            // SY <--
         )
 
-        fun fromBooleanArray(array: BooleanArray) = RestoreOptions(
-            libraryEntries = array[0],
-            categories = array[1],
-            appSettings = array[2],
-            extensionStores = array[3],
-            sourceSettings = array[4],
-            // SY -->
-            savedSearchesFeeds = array[5],
-            // SY <--
-        )
+        fun fromBooleanArray(array: BooleanArray): RestoreOptions = if (array.size == 4) {
+            RestoreOptions(array[0], array[1], array[2], array[3])
+        } else {
+            RestoreOptions(array[0], array[1], array[2], array[4])
+        }
     }
 
     data class Entry(

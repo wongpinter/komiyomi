@@ -63,7 +63,6 @@ import com.google.android.material.transition.platform.MaterialContainerTransfor
 import com.hippo.unifile.UniFile
 import eu.kanade.core.util.ifSourcesLoaded
 import eu.kanade.domain.base.BasePreferences
-import eu.kanade.domain.connections.service.ConnectionsPreferences
 import eu.kanade.domain.manga.model.readingMode
 import eu.kanade.domain.manga.model.westernComicMode
 import eu.kanade.domain.ui.UiPreferences
@@ -80,19 +79,13 @@ import eu.kanade.presentation.reader.settings.ReaderSettingsDialog
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.coil.TachiyomiImageDecoder
-import eu.kanade.tachiyomi.data.connections.discord.DiscordRPCService
-import eu.kanade.tachiyomi.data.connections.discord.ReaderData
-import eu.kanade.tachiyomi.data.notification.NotificationReceiver
-import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.databinding.ReaderActivityBinding
 import eu.kanade.tachiyomi.source.model.Page
-import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.AddToLibraryFirst
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Error
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Success
-import eu.kanade.tachiyomi.ui.reader.loader.HttpPageLoader
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
@@ -105,13 +98,10 @@ import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerConfig
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.VerticalPagerViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonViewer
-import eu.kanade.tachiyomi.ui.webview.WebViewActivity
 import eu.kanade.tachiyomi.util.system.isNightMode
-import eu.kanade.tachiyomi.util.system.openInBrowser
 import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.view.setComposeContent
-import exh.source.isEhBasedSource
 import exh.util.defaultReaderType
 import exh.util.mangaType
 import kotlinx.collections.immutable.persistentSetOf
@@ -173,14 +163,9 @@ class ReaderActivity : BaseActivity() {
     val themeCoverBased = Injekt.get<UiPreferences>().themeCoverBased().get()
     // KMK <--
 
-    // AM (CONNECTIONS) -->
-    private val connectionsPreferences: ConnectionsPreferences = Injekt.get()
-    // <-- AM (CONNECTIONS)
-
     lateinit var binding: ReaderActivityBinding
 
     val viewModel by viewModels<ReaderViewModel>()
-    private var assistUrl: String? = null
 
     // SY -->
     private val sourceManager = Injekt.get<SourceManager>()
@@ -240,7 +225,6 @@ class ReaderActivity : BaseActivity() {
                 finish()
                 return
             }
-            NotificationReceiver.dismissNotification(this, manga.hashCode(), Notifications.ID_NEW_CHAPTERS)
 
             lifecycleScope.launchNonCancellable {
                 val initResult = viewModel.init(manga, chapter/* SY --> */, page/* SY <-- */)
@@ -458,7 +442,6 @@ class ReaderActivity : BaseActivity() {
                     }
                     ChapterListDialog(
                         onDismissRequest = onDismissRequest,
-                        screenModel = settingsScreenModel,
                         chapters = chapters,
                         onClickChapter = {
                             viewModel.loadNewChapterFromDialog(it)
@@ -475,11 +458,6 @@ class ReaderActivity : BaseActivity() {
                             }.toImmutableList()
                         },
                         state.dateRelativeTime,
-                        // KMK -->
-                        onDownloadAction = { chapter, action ->
-                            viewModel.handleDownloadAction(chapter, action)
-                        },
-                        // KMK <--
                     )
                 }
 
@@ -494,27 +472,6 @@ class ReaderActivity : BaseActivity() {
                     text = { Text(text = stringResource(SYMR.strings.eh_autoscroll_help_message)) },
                 )
 
-                ReaderViewModel.Dialog.BoostPageHelp -> AlertDialog(
-                    onDismissRequest = onDismissRequest,
-                    confirmButton = {
-                        TextButton(onClick = onDismissRequest) {
-                            Text(text = stringResource(MR.strings.action_ok))
-                        }
-                    },
-                    title = { Text(text = stringResource(SYMR.strings.eh_boost_page_help)) },
-                    text = { Text(text = stringResource(SYMR.strings.eh_boost_page_help_message)) },
-                )
-
-                ReaderViewModel.Dialog.RetryAllHelp -> AlertDialog(
-                    onDismissRequest = onDismissRequest,
-                    confirmButton = {
-                        TextButton(onClick = onDismissRequest) {
-                            Text(text = stringResource(MR.strings.action_ok))
-                        }
-                    },
-                    title = { Text(text = stringResource(SYMR.strings.eh_retry_all_help)) },
-                    text = { Text(text = stringResource(SYMR.strings.eh_retry_all_help_message)) },
-                )
                 // SY <--
                 null -> {}
             }
@@ -537,10 +494,6 @@ class ReaderActivity : BaseActivity() {
             viewModel.updateHistory()
         }
 
-        // AM (DISCORD) -->
-        updateDiscordRPC(exitingReader = true)
-        // <-- AM (DISCORD)
-
         super.onPause()
     }
 
@@ -553,7 +506,6 @@ class ReaderActivity : BaseActivity() {
         viewModel.restartReadTimer()
 
         // AM (DISCORD) -->
-        updateDiscordRPC(exitingReader = false)
         // <-- AM (DISCORD)
 
         setMenuVisibility(viewModel.state.value.menuVisible)
@@ -568,11 +520,6 @@ class ReaderActivity : BaseActivity() {
         if (hasFocus) {
             setMenuVisibility(viewModel.state.value.menuVisible)
         }
-    }
-
-    override fun onProvideAssistContent(outContent: AssistContent) {
-        super.onProvideAssistContent(outContent)
-        assistUrl?.let { outContent.webUri = it.toUri() }
     }
 
     /**
@@ -650,8 +597,6 @@ class ReaderActivity : BaseActivity() {
             return
         }
 
-        val isHttpSource = viewModel.getSource() is HttpSource
-
         val cropBorderPaged by readerPreferences.cropBorders().collectAsState()
         val cropBorderWebtoon by readerPreferences.cropBordersWebtoon().collectAsState()
         // SY -->
@@ -693,7 +638,6 @@ class ReaderActivity : BaseActivity() {
             mangaTitle = state.manga?.title,
             chapterTitle = state.currentChapter?.chapter?.name,
             navigateUp = onBackPressedDispatcher::onBackPressed,
-            onClickTopAppBar = ::openMangaScreen,
             // KMK -->
             bookmarked = if (state.manga?.source == 0L) state.currentPage - 1 in state.pageBookmarks else state.bookmarked,
             // KMK <--
@@ -705,10 +649,6 @@ class ReaderActivity : BaseActivity() {
             // KMK -->
             onToggleBookmarked = if (state.manga?.source == 0L) viewModel::toggleCurrentPageBookmark else viewModel::toggleChapterBookmark,
             // KMK <--
-            onOpenInWebView = ::openChapterInWebView.takeIf { isHttpSource },
-            onOpenInBrowser = ::openChapterInBrowser.takeIf { isHttpSource },
-            onShare = ::shareChapter.takeIf { isHttpSource },
-
             viewer = state.viewer,
             onNextChapter = ::loadNextChapter,
             enabledNext = state.viewerChapters?.nextChapter != null,
@@ -737,18 +677,14 @@ class ReaderActivity : BaseActivity() {
             },
             onClickSettings = viewModel::openSettingsDialog,
             // SY -->
-            isExhToolsVisible = state.ehUtilsVisible,
-            onSetExhUtilsVisibility = viewModel::showEhUtils,
+            isReaderToolsVisible = state.readerToolsVisible,
+            onSetReaderToolsVisibility = viewModel::showReaderTools,
             isAutoScroll = state.autoScroll,
             isAutoScrollEnabled = state.isAutoScrollEnabled,
             onToggleAutoscroll = viewModel::toggleAutoScroll,
-            autoScrollFrequency = state.ehAutoscrollFreq,
+            autoScrollFrequency = state.autoScrollFrequency,
             onSetAutoScrollFrequency = viewModel::setAutoScrollFrequency,
             onClickAutoScrollHelp = viewModel::openAutoScrollHelpDialog,
-            onClickRetryAll = ::exhRetryAll,
-            onClickRetryAllHelp = viewModel::openRetryAllHelp,
-            onClickBoostPage = ::exhBoostPage,
-            onClickBoostPageHelp = viewModel::openBoostPageHelp,
             currentPageText = state.currentPageText,
             navBarType = navBarType,
             enabledButtons = readerBottomButtons,
@@ -824,78 +760,6 @@ class ReaderActivity : BaseActivity() {
                 }
             }
             .launchIn(lifecycleScope)
-    }
-
-    private fun exhRetryAll() {
-        var retried = 0
-
-        viewModel.state.value.viewerChapters
-            ?.currChapter
-            ?.pages
-            ?.forEachIndexed { _, page ->
-                var shouldQueuePage = false
-                if (page.status is Page.State.Error) {
-                    shouldQueuePage = true
-                } /*else if (page.status == Page.State.LoadPage ||
-                                    page.status == Page.State.DownloadImage) {
-                                // Do nothing
-                            }*/
-
-                if (shouldQueuePage) {
-                    page.status = Page.State.Queue
-                } else {
-                    return@forEachIndexed
-                }
-
-                // If we are using EHentai/ExHentai, get a new image URL
-                viewModel.manga?.let { m ->
-                    val src = sourceManager.get(m.source)
-                    if (src?.isEhBasedSource() == true) {
-                        page.imageUrl = null
-                    }
-                }
-
-                val loader = page.chapter.pageLoader
-                if (page.index == exhCurrentpage()?.index && loader is HttpPageLoader) {
-                    loader.boostPage(page)
-                } else {
-                    loader?.retryPage(page)
-                }
-
-                retried++
-            }
-
-        toast(pluralStringResource(SYMR.plurals.eh_retry_toast, retried, retried))
-    }
-
-    private fun exhBoostPage() {
-        viewModel.state.value.viewer ?: return
-        val curPage = exhCurrentpage() ?: run {
-            toast(SYMR.strings.eh_boost_page_invalid)
-            return
-        }
-
-        if (curPage.status is Page.State.Error) {
-            toast(SYMR.strings.eh_boost_page_errored)
-        } else if (curPage.status == Page.State.LoadPage || curPage.status == Page.State.DownloadImage) {
-            toast(SYMR.strings.eh_boost_page_downloading)
-        } else if (curPage.status == Page.State.Ready) {
-            toast(SYMR.strings.eh_boost_page_downloaded)
-        } else {
-            val loader = (viewModel.state.value.viewerChapters?.currChapter?.pageLoader as? HttpPageLoader)
-            if (loader != null) {
-                loader.boostPage(curPage)
-                toast(SYMR.strings.eh_boost_boosted)
-            } else {
-                toast(SYMR.strings.eh_boost_invalid_loader)
-            }
-        }
-    }
-
-    private fun exhCurrentpage(): ReaderPage? {
-        val viewer = viewModel.state.value.viewer
-        val currentPage = (((viewer as? PagerViewer)?.currentPage ?: (viewer as? WebtoonViewer)?.currentPage) as? ReaderPage)?.index
-        return currentPage?.let { viewModel.state.value.viewerChapters?.currChapter?.pages?.getOrNull(it) }
     }
 
     fun reloadChapters(doublePages: Boolean, force: Boolean = false) {
@@ -1023,40 +887,6 @@ class ReaderActivity : BaseActivity() {
         startPostponedEnterTransition()
     }
 
-    private fun openMangaScreen() {
-        viewModel.manga?.id?.let { id ->
-            startActivity(
-                Intent(this, MainActivity::class.java).apply {
-                    action = Constants.SHORTCUT_MANGA
-                    putExtra(Constants.MANGA_EXTRA, id)
-                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                },
-            )
-        }
-    }
-
-    private fun openChapterInWebView() {
-        val manga = viewModel.manga ?: return
-        val source = viewModel.getSource() ?: return
-        assistUrl?.let {
-            val intent = WebViewActivity.newIntent(this@ReaderActivity, it, source.id, manga.title)
-            startActivity(intent)
-        }
-    }
-
-    private fun openChapterInBrowser() {
-        assistUrl?.let {
-            openInBrowser(it.toUri(), forceDefaultBrowser = false)
-        }
-    }
-
-    private fun shareChapter() {
-        assistUrl?.let {
-            val intent = it.toUri().toShareIntent(this, type = "text/plain")
-            startActivity(intent)
-        }
-    }
-
     private fun showReadingModeToast(mode: Int) {
         try {
             readingModeToast?.cancel()
@@ -1098,14 +928,7 @@ class ReaderActivity : BaseActivity() {
 
         viewModel.state.value.viewer?.setChapters(viewerChapters)
 
-        lifecycleScope.launchIO {
-            viewModel.getChapterUrl()?.let { url ->
-                assistUrl = url
-            }
-        }
-
         // AM (DISCORD) -->
-        updateDiscordRPC(exitingReader = false)
         // <-- AM (DISCORD)
     }
 
@@ -1528,48 +1351,4 @@ class ReaderActivity : BaseActivity() {
             binding.viewerContainer.setLayerType(LAYER_TYPE_HARDWARE, paint)
         }
     }
-
-    // KMK -->
-    /**
-     * Updates the Discord Rich Presence (RPC) status based on the current reader activity.
-     *
-     * @param exitingReader A boolean flag indicating whether the user is exiting the reader.
-     * If true, the Discord RPC status is set to the last used screen.
-     * If false, the Discord RPC status is set to the current reader activity, displaying details such as the manga title, chapter number, and chapter title.
-     */
-    private fun updateDiscordRPC(exitingReader: Boolean) {
-        if (!connectionsPreferences.enableDiscordRPC().get()) return
-
-        DiscordRPCService.discordScope.launchIO {
-            try {
-                if (!exitingReader) {
-                    val manga = viewModel.manga ?: return@launchIO
-                    val chapter = viewModel.currentChapter ?: return@launchIO
-
-                    DiscordRPCService.setReaderActivity(
-                        context = this@ReaderActivity,
-                        ReaderData(
-                            incognitoMode = viewModel.incognitoMode,
-                            mangaId = manga.id,
-                            mangaTitle = manga.ogTitle,
-                            thumbnailUrl = manga.thumbnailUrl.takeIf { UrlUtils.isOnlineUrl(it) } ?: manga.ogThumbnailUrl,
-                            chapterNumber = if (connectionsPreferences.useChapterTitles().get()) {
-                                chapter.name
-                            } else {
-                                chapter.chapterNumber.toString()
-                            },
-                            startTimestamp = System.currentTimeMillis(),
-                        ),
-                    )
-                } else {
-                    with(DiscordRPCService) {
-                        setScreen(this@ReaderActivity)
-                    }
-                }
-            } catch (e: Exception) {
-                logcat(LogPriority.ERROR) { "Error updating Discord RPC: ${e.message}" }
-            }
-        }
-    }
-    // KMK <--
 }

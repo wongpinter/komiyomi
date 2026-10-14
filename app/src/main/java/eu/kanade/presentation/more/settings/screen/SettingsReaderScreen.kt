@@ -615,9 +615,6 @@ object SettingsReaderScreen : SearchableSettings {
                 Preference.PreferenceItem.MultiSelectListPreference(
                     preference = readerPreferences.readerBottomButtons(),
                     entries = ReaderBottomButton.entries
-                        // KMK -->
-                        .filterNot { it == ReaderBottomButton.WebView || it == ReaderBottomButton.Browser }
-                        // KMK <--
                         .associate { it.value to stringResource(it.stringRes) }
                         .toImmutableMap(),
                     title = stringResource(SYMR.strings.reader_bottom_buttons),

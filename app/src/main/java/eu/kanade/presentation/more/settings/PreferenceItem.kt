@@ -16,7 +16,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import eu.kanade.presentation.more.settings.widget.ConnectionPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.EditTextPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.InfoWidget
 import eu.kanade.presentation.more.settings.widget.ListPreferenceWidget
@@ -26,7 +25,6 @@ import eu.kanade.presentation.more.settings.widget.PrefsVerticalPadding
 import eu.kanade.presentation.more.settings.widget.SwitchPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.TitleFontSize
-import eu.kanade.presentation.more.settings.widget.TrackingPreferenceWidget
 import kotlinx.coroutines.launch
 import tachiyomi.presentation.core.components.BaseSliderItem
 import tachiyomi.presentation.core.util.collectAsState
@@ -166,27 +164,6 @@ internal fun PreferenceItem(
                     },
                 )
             }
-            is Preference.PreferenceItem.TrackerPreference -> {
-                val isLoggedIn by item.tracker.let { tracker ->
-                    tracker.isLoggedInFlow.collectAsState(tracker.isLoggedIn)
-                }
-                TrackingPreferenceWidget(
-                    tracker = item.tracker,
-                    checked = isLoggedIn,
-                    onClick = { if (isLoggedIn) item.logout() else item.login() },
-                )
-            }
-            // AM (CONNECTIONS) -->
-            is Preference.PreferenceItem.ConnectionPreference -> {
-                val isLoggedIn by item.service.isLoggedInFlow.collectAsState(item.service.isLogged)
-                ConnectionPreferenceWidget(
-                    service = item.service,
-                    checked = isLoggedIn,
-                    onClick = { if (isLoggedIn) item.openSettings() else item.login() },
-                    subtitle = item.subtitle,
-                )
-            }
-            // <-- AM (CONNECTIONS)
             is Preference.PreferenceItem.InfoPreference -> {
                 InfoWidget(text = item.title)
             }

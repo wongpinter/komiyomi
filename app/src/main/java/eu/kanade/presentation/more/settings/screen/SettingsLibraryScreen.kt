@@ -18,7 +18,6 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.category.visualName
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.widget.TriStateListDialog
-import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.category.genre.SortTagScreen
 import kotlinx.collections.immutable.persistentListOf
@@ -118,124 +117,6 @@ object SettingsLibraryScreen : SearchableSettings {
                         true
                     },
                 ),
-            ),
-        )
-    }
-
-    @Composable
-    private fun getGlobalUpdateGroup(
-        allCategories: List<Category>,
-        libraryPreferences: LibraryPreferences,
-    ): Preference.PreferenceGroup {
-        val context = LocalContext.current
-
-        val autoUpdateIntervalPref = libraryPreferences.autoUpdateInterval()
-        val autoUpdateCategoriesPref = libraryPreferences.updateCategories()
-        val autoUpdateCategoriesExcludePref = libraryPreferences.updateCategoriesExclude()
-
-        val autoUpdateInterval by autoUpdateIntervalPref.collectAsState()
-
-        val included by autoUpdateCategoriesPref.collectAsState()
-        val excluded by autoUpdateCategoriesExcludePref.collectAsState()
-        var showCategoriesDialog by rememberSaveable { mutableStateOf(false) }
-        if (showCategoriesDialog) {
-            TriStateListDialog(
-                title = stringResource(MR.strings.categories),
-                message = stringResource(MR.strings.pref_library_update_categories_details),
-                items = allCategories,
-                initialChecked = included.mapNotNull { id -> allCategories.find { it.id.toString() == id } },
-                initialInversed = excluded.mapNotNull { id -> allCategories.find { it.id.toString() == id } },
-                itemLabel = { it.visualName },
-                onDismissRequest = { showCategoriesDialog = false },
-                onValueChanged = { newIncluded, newExcluded ->
-                    autoUpdateCategoriesPref.set(newIncluded.map { it.id.toString() }.toSet())
-                    autoUpdateCategoriesExcludePref.set(newExcluded.map { it.id.toString() }.toSet())
-                    showCategoriesDialog = false
-                },
-            )
-        }
-
-        return Preference.PreferenceGroup(
-            title = stringResource(MR.strings.pref_category_library_update),
-            preferenceItems = persistentListOf(
-                Preference.PreferenceItem.ListPreference(
-                    preference = autoUpdateIntervalPref,
-                    entries = persistentMapOf(
-                        0 to stringResource(MR.strings.update_never),
-                        12 to stringResource(MR.strings.update_12hour),
-                        24 to stringResource(MR.strings.update_24hour),
-                        48 to stringResource(MR.strings.update_48hour),
-                        72 to stringResource(MR.strings.update_72hour),
-                        168 to stringResource(MR.strings.update_weekly),
-                    ),
-                    title = stringResource(MR.strings.pref_library_update_interval),
-                    onValueChanged = {
-                        LibraryUpdateJob.setupTask(context, it)
-                        true
-                    },
-                ),
-                Preference.PreferenceItem.MultiSelectListPreference(
-                    preference = libraryPreferences.autoUpdateDeviceRestrictions(),
-                    entries = persistentMapOf(
-                        DEVICE_ONLY_ON_WIFI to stringResource(MR.strings.connected_to_wifi),
-                        DEVICE_NETWORK_NOT_METERED to stringResource(MR.strings.network_not_metered),
-                        DEVICE_CHARGING to stringResource(MR.strings.charging),
-                    ),
-                    title = stringResource(MR.strings.pref_library_update_restriction),
-                    subtitle = stringResource(MR.strings.restrictions),
-                    enabled = autoUpdateInterval > 0,
-                    onValueChanged = {
-                        // Post to event looper to allow the preference to be updated.
-                        ContextCompat.getMainExecutor(context).execute { LibraryUpdateJob.setupTask(context) }
-                        true
-                    },
-                ),
-                Preference.PreferenceItem.TextPreference(
-                    title = stringResource(MR.strings.categories),
-                    subtitle = getCategoriesLabel(
-                        allCategories = allCategories,
-                        included = included,
-                        excluded = excluded,
-                    ),
-                    onClick = { showCategoriesDialog = true },
-                ),
-                // SY -->
-                Preference.PreferenceItem.ListPreference(
-                    preference = libraryPreferences.groupLibraryUpdateType(),
-                    entries = persistentMapOf(
-                        GroupLibraryMode.GLOBAL to stringResource(SYMR.strings.library_group_updates_global),
-                        GroupLibraryMode.ALL_BUT_UNGROUPED to
-                            stringResource(SYMR.strings.library_group_updates_all_but_ungrouped),
-                        GroupLibraryMode.ALL to stringResource(SYMR.strings.library_group_updates_all),
-                    ),
-                    title = stringResource(SYMR.strings.library_group_updates),
-                ),
-                // SY <--
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.autoUpdateMetadata(),
-                    title = stringResource(MR.strings.pref_library_update_refresh_metadata),
-                    subtitle = stringResource(MR.strings.pref_library_update_refresh_metadata_summary),
-                ),
-                Preference.PreferenceItem.MultiSelectListPreference(
-                    preference = libraryPreferences.autoUpdateMangaRestrictions(),
-                    entries = persistentMapOf(
-                        MANGA_HAS_UNREAD to stringResource(MR.strings.pref_update_only_completely_read),
-                        MANGA_NON_READ to stringResource(MR.strings.pref_update_only_started),
-                        MANGA_NON_COMPLETED to stringResource(MR.strings.pref_update_only_non_completed),
-                        MANGA_OUTSIDE_RELEASE_PERIOD to stringResource(MR.strings.pref_update_only_in_release_period),
-                    ),
-                    title = stringResource(MR.strings.pref_library_update_smart_update),
-                ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.newShowUpdatesCount(),
-                    title = stringResource(MR.strings.pref_library_update_show_tab_badge),
-                ),
-                // KMK -->
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.showUpdatingProgressBanner(),
-                    title = stringResource(KMR.strings.pref_show_updating_progress_banner),
-                ),
-                // KMK <--
             ),
         )
     }

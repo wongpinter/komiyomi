@@ -60,12 +60,8 @@ fun ReaderAppBars(
     mangaTitle: String?,
     chapterTitle: String?,
     navigateUp: () -> Unit,
-    onClickTopAppBar: () -> Unit,
     bookmarked: Boolean,
     onToggleBookmarked: () -> Unit,
-    onOpenInWebView: (() -> Unit)?,
-    onOpenInBrowser: (() -> Unit)?,
-    onShare: (() -> Unit)?,
 
     viewer: Viewer?,
     onNextChapter: () -> Unit,
@@ -84,18 +80,14 @@ fun ReaderAppBars(
     onClickCropBorder: () -> Unit,
     onClickSettings: () -> Unit,
     // SY -->
-    isExhToolsVisible: Boolean,
-    onSetExhUtilsVisibility: (Boolean) -> Unit,
+    isReaderToolsVisible: Boolean,
+    onSetReaderToolsVisibility: (Boolean) -> Unit,
     isAutoScroll: Boolean,
     isAutoScrollEnabled: Boolean,
     onToggleAutoscroll: (Boolean) -> Unit,
     autoScrollFrequency: String,
     onSetAutoScrollFrequency: (String) -> Unit,
     onClickAutoScrollHelp: () -> Unit,
-    onClickRetryAll: () -> Unit,
-    onClickRetryAllHelp: () -> Unit,
-    onClickBoostPage: () -> Unit,
-    onClickBoostPageHelp: () -> Unit,
     navBarType: NavBarType,
     currentPageText: String,
     enabledButtons: ImmutableSet<String>,
@@ -135,9 +127,7 @@ fun ReaderAppBars(
             Column {
                 // SY <--
                 ReaderTopBar(
-                    modifier = Modifier
-                        .background(backgroundColor)
-                        .clickable(onClick = onClickTopAppBar),
+                    modifier = Modifier.background(backgroundColor),
                     mangaTitle = mangaTitle,
                     // KMK -->
                     chapterTitle = archiveSection?.name?.takeIf { it.isNotBlank() } ?: chapterTitle,
@@ -145,11 +135,6 @@ fun ReaderAppBars(
                     navigateUp = navigateUp,
                     bookmarked = bookmarked,
                     onToggleBookmarked = onToggleBookmarked,
-                    // SY -->
-                    onOpenInWebView = null, // onOpenInWebView,
-                    onOpenInBrowser = null, // onOpenInBrowser,
-                    onShare = null, // onShare,
-                    // SY <--
                 )
                 // SY -->
                 // KMK -->
@@ -164,9 +149,9 @@ fun ReaderAppBars(
                     )
                 }
                 // KMK <--
-                ExhUtils(
-                    isVisible = isExhToolsVisible,
-                    onSetExhUtilsVisibility = onSetExhUtilsVisibility,
+                ReaderTools(
+                    isVisible = isReaderToolsVisible,
+                    onSetReaderToolsVisibility = onSetReaderToolsVisibility,
                     backgroundColor = backgroundColor,
                     isAutoScroll = isAutoScroll,
                     isAutoScrollEnabled = isAutoScrollEnabled,
@@ -174,10 +159,6 @@ fun ReaderAppBars(
                     autoScrollFrequency = autoScrollFrequency,
                     onSetAutoScrollFrequency = onSetAutoScrollFrequency,
                     onClickAutoScrollHelp = onClickAutoScrollHelp,
-                    onClickRetryAll = onClickRetryAll,
-                    onClickRetryAllHelp = onClickRetryAllHelp,
-                    onClickBoostPage = onClickBoostPage,
-                    onClickBoostPageHelp = onClickBoostPageHelp,
                 )
             }
             // SY <--
@@ -316,9 +297,7 @@ fun ReaderAppBars(
                         onClickChapterList
                     },
                     // KMK <--
-                    onClickWebView = onOpenInWebView,
-                    onClickBrowser = onOpenInBrowser,
-                    onClickShare = onShare,
+                    onClickShare = null,
                     onClickPageLayout = onClickPageLayout,
                     onClickShiftPage = onClickShiftPage,
                     // SY <--

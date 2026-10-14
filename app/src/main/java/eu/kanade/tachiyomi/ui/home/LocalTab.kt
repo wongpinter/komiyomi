@@ -55,7 +55,7 @@ data object OfflineBrowseTab : Tab {
     override val options: TabOptions
         @Composable
         get() = TabOptions(
-            index = 1u,
+            index = 2u,
             title = stringResource(MR.strings.browse),
             icon = rememberVectorPainter(Icons.Outlined.Folder),
         )

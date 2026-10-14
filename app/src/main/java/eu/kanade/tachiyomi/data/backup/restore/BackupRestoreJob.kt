@@ -48,12 +48,10 @@ class BackupRestoreJob(private val context: Context, workerParams: WorkerParamet
         backupRestoreStatus.start()
         // KMK <--
 
-        val isSync = inputData.getBoolean(SYNC_KEY, false)
-
         setForegroundSafely()
 
         return try {
-            BackupRestorer(context, notifier, isSync).restore(uri, options)
+            BackupRestorer(context, notifier).restore(uri, options)
             Result.success()
         } catch (e: Exception) {
             if (e is CancellationException) {
@@ -93,11 +91,9 @@ class BackupRestoreJob(private val context: Context, workerParams: WorkerParamet
             context: Context,
             uri: Uri,
             options: RestoreOptions,
-            sync: Boolean = false,
         ) {
             val inputData = workDataOf(
                 LOCATION_URI_KEY to uri.toString(),
-                SYNC_KEY to sync,
                 OPTIONS_KEY to options.asBooleanArray(),
             )
             val request = OneTimeWorkRequestBuilder<BackupRestoreJob>()
@@ -120,5 +116,4 @@ class BackupRestoreJob(private val context: Context, workerParams: WorkerParamet
 private const val TAG = "BackupRestore"
 
 private const val LOCATION_URI_KEY = "location_uri" // String
-private const val SYNC_KEY = "sync" // Boolean
 private const val OPTIONS_KEY = "options" // BooleanArray

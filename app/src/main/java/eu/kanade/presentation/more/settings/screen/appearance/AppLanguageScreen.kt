@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import eu.kanade.domain.extension.interactor.GetExtensionLanguages.Companion.getLanguageIconID
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.R
@@ -87,9 +86,8 @@ class AppLanguageScreen : Screen() {
                         },
                         // KMK -->
                         leadingContent = {
-                            val iconResId = getLanguageIconID(it.langTag) ?: R.drawable.globe
                             Icon(
-                                painter = painterResource(id = iconResId),
+                                painter = painterResource(id = R.drawable.globe),
                                 tint = Color.Unspecified,
                                 contentDescription = it.langTag,
                                 modifier = Modifier

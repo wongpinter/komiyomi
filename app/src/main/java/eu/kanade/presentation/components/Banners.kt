@@ -23,34 +23,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastForEach
-import androidx.compose.ui.util.fastMap
-import androidx.compose.ui.util.fastMaxBy
 import dev.icerock.moko.resources.StringResource
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import java.math.RoundingMode
 import java.text.NumberFormat
 
-val DownloadedOnlyBannerBackgroundColor
-    @Composable get() = MaterialTheme.colorScheme.tertiary
-val IncognitoModeBannerBackgroundColor
-    @Composable get() = MaterialTheme.colorScheme.primary
-val IndexingBannerBackgroundColor
-    @Composable get() = MaterialTheme.colorScheme.secondary
-
-// KMK -->
 val RestoringBannerBackgroundColor
     @Composable get() = MaterialTheme.colorScheme.error
-val SyncingBannerBackgroundColor
-    @Composable get() = MaterialTheme.colorScheme.secondary
-val UpdatingBannerBackgroundColor
-    @Composable get() = MaterialTheme.colorScheme.tertiary
-// KMK <--
 
 @Composable
 fun WarningBanner(
@@ -78,138 +61,34 @@ private val percentFormatter = NumberFormat.getPercentInstance().apply {
 
 @Composable
 fun AppStateBanners(
-    downloadedOnlyMode: Boolean,
-    incognitoMode: Boolean,
-    indexing: Boolean,
-    // KMK -->
     restoring: Boolean,
-    syncing: Boolean,
-    updating: Boolean,
-    // KMK <--
     modifier: Modifier = Modifier,
-    // KMK -->
     progress: Float? = null,
-    // KMK <--
 ) {
-    val density = LocalDensity.current
-    val mainInsets = WindowInsets.statusBars
-    val mainInsetsTop = mainInsets.getTop(density)
-    SubcomposeLayout(modifier = modifier) { constraints ->
-        val indexingPlaceable = subcompose(0) {
-            AnimatedVisibility(
-                // KMK -->
-                visible = indexing || restoring || syncing || updating,
-                // KMK <--
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                IndexingDownloadBanner(
-                    modifier = Modifier.windowInsetsPadding(mainInsets),
-                    // KMK -->
-                    text = when {
-                        updating -> progress?.let {
-                            stringResource(
-                                MR.strings.notification_updating_progress,
-                                percentFormatter.format(it),
-                            )
-                        } ?: stringResource(MR.strings.updating_library)
-                        syncing -> progress?.let {
-                            stringResource(MR.strings.syncing_library) + " (${percentFormatter.format(it)})"
-                        } ?: stringResource(MR.strings.syncing_library)
-                        restoring -> progress?.let {
-                            stringResource(MR.strings.restoring_backup) + " (${percentFormatter.format(it)})"
-                        } ?: stringResource(MR.strings.restoring_backup)
-                        else -> stringResource(MR.strings.download_notifier_cache_renewal)
-                    },
-                    // KMK <--
-                )
-            }
-        }.fastMap { it.measure(constraints) }
-        val indexingHeight = indexingPlaceable.fastMaxBy { it.height }?.height ?: 0
-
-        val downloadedOnlyPlaceable = subcompose(1) {
-            AnimatedVisibility(
-                visible = downloadedOnlyMode,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                val top = (mainInsetsTop - indexingHeight).coerceAtLeast(0)
-                DownloadedOnlyModeBanner(
-                    modifier = Modifier.windowInsetsPadding(WindowInsets(top = top)),
-                )
-            }
-        }.fastMap { it.measure(constraints) }
-        val downloadedOnlyHeight = downloadedOnlyPlaceable.fastMaxBy { it.height }?.height ?: 0
-
-        val incognitoPlaceable = subcompose(2) {
-            AnimatedVisibility(
-                visible = incognitoMode,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                val top = (mainInsetsTop - indexingHeight - downloadedOnlyHeight).coerceAtLeast(0)
-                IncognitoModeBanner(
-                    modifier = Modifier.windowInsetsPadding(WindowInsets(top = top)),
-                )
-            }
-        }.fastMap { it.measure(constraints) }
-        val incognitoHeight = incognitoPlaceable.fastMaxBy { it.height }?.height ?: 0
-
-        layout(constraints.maxWidth, indexingHeight + downloadedOnlyHeight + incognitoHeight) {
-            indexingPlaceable.fastForEach {
-                it.place(0, 0)
-            }
-            downloadedOnlyPlaceable.fastForEach {
-                it.place(0, indexingHeight)
-            }
-            incognitoPlaceable.fastForEach {
-                it.place(0, indexingHeight + downloadedOnlyHeight)
-            }
-        }
+    AnimatedVisibility(
+        modifier = modifier,
+        visible = restoring,
+        enter = expandVertically(),
+        exit = shrinkVertically(),
+    ) {
+        BackupProgressBanner(
+            modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
+            text = progress?.let {
+                stringResource(MR.strings.restoring_backup) + " (${percentFormatter.format(it)})"
+            } ?: stringResource(MR.strings.restoring_backup),
+        )
     }
 }
 
 @Composable
-private fun DownloadedOnlyModeBanner(modifier: Modifier = Modifier) {
-    Text(
-        text = stringResource(MR.strings.label_downloaded_only),
-        modifier = Modifier
-            .background(DownloadedOnlyBannerBackgroundColor)
-            .fillMaxWidth()
-            .padding(4.dp)
-            .then(modifier),
-        color = MaterialTheme.colorScheme.onTertiary,
-        textAlign = TextAlign.Center,
-        style = MaterialTheme.typography.labelMedium,
-    )
-}
-
-@Composable
-private fun IncognitoModeBanner(modifier: Modifier = Modifier) {
-    Text(
-        text = stringResource(MR.strings.pref_incognito_mode),
-        modifier = Modifier
-            .background(IncognitoModeBannerBackgroundColor)
-            .fillMaxWidth()
-            .padding(4.dp)
-            .then(modifier),
-        color = MaterialTheme.colorScheme.onPrimary,
-        textAlign = TextAlign.Center,
-        style = MaterialTheme.typography.labelMedium,
-    )
-}
-
-@Composable
-private fun IndexingDownloadBanner(
+private fun BackupProgressBanner(
     modifier: Modifier = Modifier,
-    // KMK -->
-    text: String = stringResource(MR.strings.download_notifier_cache_renewal),
-    // KMK <--
+    text: String,
 ) {
     val density = LocalDensity.current
     Row(
         modifier = Modifier
-            .background(color = IndexingBannerBackgroundColor)
+            .background(color = MaterialTheme.colorScheme.error)
             .fillMaxWidth()
             .padding(8.dp)
             .then(modifier),
@@ -218,15 +97,13 @@ private fun IndexingDownloadBanner(
         var textHeight by remember { mutableStateOf(0.dp) }
         CircularProgressIndicator(
             modifier = Modifier.requiredSize(textHeight),
-            color = MaterialTheme.colorScheme.onSecondary,
+            color = MaterialTheme.colorScheme.onError,
             strokeWidth = textHeight / 8,
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            // KMK -->
             text = text,
-            // KMK <--
-            color = MaterialTheme.colorScheme.onSecondary,
+            color = MaterialTheme.colorScheme.onError,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.labelMedium,
             onTextLayout = {

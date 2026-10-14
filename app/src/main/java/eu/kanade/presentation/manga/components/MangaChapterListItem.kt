@@ -15,8 +15,6 @@ import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.BookmarkRemove
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.FileDownloadOff
 import androidx.compose.material.icons.outlined.RemoveDone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -37,7 +35,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import eu.kanade.tachiyomi.data.download.model.Download
 import me.saket.swipe.SwipeableActionsBox
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
@@ -58,38 +55,32 @@ fun MangaChapterListItem(
     read: Boolean,
     bookmark: Boolean,
     selected: Boolean,
-    downloadIndicatorEnabled: Boolean,
-    downloadStateProvider: () -> Download.State,
-    downloadProgressProvider: () -> Int,
     chapterSwipeStartAction: LibraryPreferences.ChapterSwipeAction,
     chapterSwipeEndAction: LibraryPreferences.ChapterSwipeAction,
     onLongClick: () -> Unit,
     onClick: () -> Unit,
-    onDownloadClick: ((ChapterDownloadAction) -> Unit)?,
     onChapterSwipe: (LibraryPreferences.ChapterSwipeAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // KMK -->
     val swipeBackground = MaterialTheme.colorScheme.primaryContainer
-    val swipeStart = remember(chapterSwipeStartAction, read, bookmark, downloadStateProvider()) {
+    val swipeStart = remember(chapterSwipeStartAction, read, bookmark) {
         // KMK <--
         getSwipeAction(
             action = chapterSwipeStartAction,
             read = read,
             bookmark = bookmark,
-            downloadState = downloadStateProvider(),
             background = swipeBackground,
             onSwipe = { onChapterSwipe(chapterSwipeStartAction) },
         )
     }
     // KMK -->
-    val swipeEnd = remember(chapterSwipeEndAction, read, bookmark, downloadStateProvider()) {
+    val swipeEnd = remember(chapterSwipeEndAction, read, bookmark) {
         // KMK <--
         getSwipeAction(
             action = chapterSwipeEndAction,
             read = read,
             bookmark = bookmark,
-            downloadState = downloadStateProvider(),
             background = swipeBackground,
             onSwipe = { onChapterSwipe(chapterSwipeEndAction) },
         )
@@ -198,14 +189,6 @@ fun MangaChapterListItem(
                     }
                 }
             }
-
-            ChapterDownloadIndicator(
-                enabled = downloadIndicatorEnabled,
-                modifier = Modifier.padding(start = 4.dp),
-                downloadStateProvider = downloadStateProvider,
-                downloadProgressProvider = downloadProgressProvider,
-                onClick = { onDownloadClick?.invoke(it) },
-            )
         }
     }
 }
@@ -214,7 +197,6 @@ internal fun getSwipeAction(
     action: LibraryPreferences.ChapterSwipeAction,
     read: Boolean,
     bookmark: Boolean,
-    downloadState: Download.State,
     background: Color,
     onSwipe: () -> Unit,
 ): me.saket.swipe.SwipeAction? {
@@ -231,15 +213,7 @@ internal fun getSwipeAction(
             isUndo = bookmark,
             onSwipe = onSwipe,
         )
-        LibraryPreferences.ChapterSwipeAction.Download -> swipeAction(
-            icon = when (downloadState) {
-                Download.State.NOT_DOWNLOADED, Download.State.ERROR -> Icons.Outlined.Download
-                Download.State.QUEUE, Download.State.DOWNLOADING -> Icons.Outlined.FileDownloadOff
-                Download.State.DOWNLOADED -> Icons.Outlined.Delete
-            },
-            background = background,
-            onSwipe = onSwipe,
-        )
+        LibraryPreferences.ChapterSwipeAction.Download -> null
         LibraryPreferences.ChapterSwipeAction.Disabled -> null
     }
 }
@@ -255,7 +229,7 @@ internal fun swipeAction(
             Icon(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
-                    .size(IndicatorSize),
+                    .size(24.dp),
                 imageVector = icon,
                 tint = contentColorFor(background),
                 contentDescription = null,

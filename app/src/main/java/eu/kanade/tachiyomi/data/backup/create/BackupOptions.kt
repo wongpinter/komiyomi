@@ -10,16 +10,13 @@ data class BackupOptions(
     val libraryEntries: Boolean = true,
     val categories: Boolean = true,
     val chapters: Boolean = true,
-    val tracking: Boolean = true,
     val history: Boolean = true,
     val readEntries: Boolean = true,
     val appSettings: Boolean = true,
-    val extensionStores: Boolean = true,
     val sourceSettings: Boolean = true,
     val privateSettings: Boolean = false,
     // SY -->
     val customInfo: Boolean = true,
-    val savedSearchesFeeds: Boolean = true,
     // SY <--
 ) {
 
@@ -27,21 +24,18 @@ data class BackupOptions(
         libraryEntries,
         categories,
         chapters,
-        tracking,
         history,
         readEntries,
         appSettings,
-        extensionStores,
         sourceSettings,
         privateSettings,
         // SY -->
         customInfo,
-        savedSearchesFeeds,
         // SY <--
     )
 
     fun canCreate() =
-        libraryEntries || categories || appSettings || extensionStores || sourceSettings || savedSearchesFeeds
+        libraryEntries || categories || appSettings || sourceSettings
 
     companion object {
         val libraryOptions = persistentListOf(
@@ -54,12 +48,6 @@ data class BackupOptions(
                 label = MR.strings.chapters,
                 getter = BackupOptions::chapters,
                 setter = { options, enabled -> options.copy(chapters = enabled) },
-                enabled = { it.libraryEntries },
-            ),
-            Entry(
-                label = MR.strings.track,
-                getter = BackupOptions::tracking,
-                setter = { options, enabled -> options.copy(tracking = enabled) },
                 enabled = { it.libraryEntries },
             ),
             Entry(
@@ -86,13 +74,6 @@ data class BackupOptions(
                 setter = { options, enabled -> options.copy(customInfo = enabled) },
                 enabled = { it.libraryEntries },
             ),
-            Entry(
-                // KMK-->
-                label = KMR.strings.saved_searches_feeds,
-                // KMK <--
-                getter = BackupOptions::savedSearchesFeeds,
-                setter = { options, enabled -> options.copy(savedSearchesFeeds = enabled) },
-            ),
             // SY <--
         )
 
@@ -101,11 +82,6 @@ data class BackupOptions(
                 label = MR.strings.app_settings,
                 getter = BackupOptions::appSettings,
                 setter = { options, enabled -> options.copy(appSettings = enabled) },
-            ),
-            Entry(
-                label = MR.strings.extensionStores,
-                getter = BackupOptions::extensionStores,
-                setter = { options, enabled -> options.copy(extensionStores = enabled) },
             ),
             Entry(
                 label = MR.strings.source_settings,
@@ -120,22 +96,32 @@ data class BackupOptions(
             ),
         )
 
-        fun fromBooleanArray(array: BooleanArray) = BackupOptions(
-            libraryEntries = array[0],
-            categories = array[1],
-            chapters = array[2],
-            tracking = array[3],
-            history = array[4],
-            readEntries = array[5],
-            appSettings = array[6],
-            extensionStores = array[7],
-            sourceSettings = array[8],
-            privateSettings = array[9],
-            // SY -->
-            customInfo = array[10],
-            savedSearchesFeeds = array[11],
-            // SY <--
-        )
+        fun fromBooleanArray(array: BooleanArray): BackupOptions = if (array.size == 9) {
+            BackupOptions(
+                libraryEntries = array[0],
+                categories = array[1],
+                chapters = array[2],
+                history = array[3],
+                readEntries = array[4],
+                appSettings = array[5],
+                sourceSettings = array[6],
+                privateSettings = array[7],
+                customInfo = array[8],
+            )
+        } else {
+            // Older saved state also included trackers, extension stores, and remote saved searches.
+            BackupOptions(
+                libraryEntries = array[0],
+                categories = array[1],
+                chapters = array[2],
+                history = array[4],
+                readEntries = array[5],
+                appSettings = array[6],
+                sourceSettings = array[8],
+                privateSettings = array[9],
+                customInfo = array.getOrElse(10) { true },
+            )
+        }
     }
 
     data class Entry(

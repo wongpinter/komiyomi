@@ -25,19 +25,14 @@ import eu.kanade.presentation.history.HistoryScreen
 import eu.kanade.presentation.history.components.HistoryDeleteAllDialog
 import eu.kanade.presentation.history.components.HistoryDeleteDialog
 import eu.kanade.presentation.history.components.HistoryFilterDialog
-import eu.kanade.presentation.manga.DuplicateMangaDialog
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.data.connections.discord.DiscordRPCService
-import eu.kanade.tachiyomi.data.connections.discord.DiscordScreen
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.main.MainActivity
-import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
-import mihon.feature.migration.dialog.MigrateMangaDialog
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.chapter.model.Chapter
@@ -61,7 +56,7 @@ data object HistoryTab : Tab {
             val isSelected = LocalTabNavigator.current.current.key == key
             val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_history_enter)
             return TabOptions(
-                index = 2u,
+                index = 1u,
                 title = stringResource(MR.strings.label_recent_manga),
                 icon = rememberAnimatedVectorPainter(image, isSelected),
             )
@@ -96,7 +91,11 @@ data object HistoryTab : Tab {
             state = state,
             snackbarHostState = snackbarHostState,
             onSearchQueryChange = screenModel::updateSearchQuery,
-            onClickCover = { navigator.push(MangaScreen(it)) },
+            onClickCover = { mangaId ->
+                state.list.firstOrNull { it.mangaId == mangaId }?.let {
+                    screenModel.getNextChapterForManga(it.mangaId, it.chapterId)
+                }
+            },
             onClickResume = screenModel::getNextChapterForManga,
             onDialogChange = screenModel::setDialog,
             onClickFavorite = screenModel::addFavorite,
@@ -133,18 +132,6 @@ data object HistoryTab : Tab {
                     onDelete = screenModel::removeAllHistory,
                 )
             }
-            is HistoryScreenModel.Dialog.DuplicateManga -> {
-                DuplicateMangaDialog(
-                    duplicates = dialog.duplicates,
-                    onDismissRequest = onDismissRequest,
-                    onConfirm = { screenModel.addFavorite(dialog.manga) },
-                    onOpenManga = { navigator.push(MangaScreen(it.id)) },
-                    onMigrate = { screenModel.showMigrateDialog(dialog.manga, it) },
-                    // KMK -->
-                    targetManga = dialog.manga,
-                    // KMK <--
-                )
-            }
             is HistoryScreenModel.Dialog.ChangeCategory -> {
                 ChangeCategoryDialog(
                     initialSelection = dialog.initialSelection,
@@ -153,15 +140,6 @@ data object HistoryTab : Tab {
                     onConfirm = { include, _ ->
                         screenModel.moveMangaToCategoriesAndAddToLibrary(dialog.manga, include)
                     },
-                )
-            }
-            is HistoryScreenModel.Dialog.Migrate -> {
-                MigrateMangaDialog(
-                    current = dialog.current,
-                    target = dialog.target,
-                    // Initiated from the context of [dialog.target] so we show [dialog.current].
-                    onClickTitle = { navigator.push(MangaScreen(dialog.current.id)) },
-                    onDismissRequest = onDismissRequest,
                 )
             }
             // KMK -->
@@ -180,12 +158,6 @@ data object HistoryTab : Tab {
             if (!state.isLoading) {
                 // KMK <--
                 (context as? MainActivity)?.ready = true
-
-                // AM (DISCORD) -->
-                with(DiscordRPCService) {
-                    discordScope.launchIO { setScreen(context, DiscordScreen.HISTORY) }
-                }
-                // <-- AM (DISCORD)
             }
         }
 

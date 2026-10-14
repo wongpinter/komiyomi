@@ -13,27 +13,7 @@ plugins {
     id("com.github.ben-manes.versions")
 }
 
-if (Config.includeTelemetry) {
-    pluginManager.apply {
-        apply(libs.plugins.google.services.get().pluginId)
-        apply(libs.plugins.firebase.crashlytics.get().pluginId)
-    }
-}
-
 shortcutHelper.setFilePath("./shortcuts.xml")
-
-// KMK -->
-val stableUpdaterRepository = providers.gradleProperty("komiyomi-updater-repo").orNull.orEmpty()
-val previewUpdaterRepository = providers.gradleProperty("komiyomi-preview-updater-repo").orNull.orEmpty()
-val updaterRepositoryPattern = Regex("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
-require(stableUpdaterRepository.isBlank() || stableUpdaterRepository.matches(updaterRepositoryPattern)) {
-    "komiyomi-updater-repo must use the owner/repository format"
-}
-require(previewUpdaterRepository.isBlank() || previewUpdaterRepository.matches(updaterRepositoryPattern)) {
-    "komiyomi-preview-updater-repo must use the owner/repository format"
-}
-val updaterEnabled = Config.enableUpdater && (stableUpdaterRepository.isNotBlank() || previewUpdaterRepository.isNotBlank())
-// KMK <--
 
 android {
     namespace = "eu.kanade.tachiyomi"
@@ -51,12 +31,6 @@ android {
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLastCommitTime = false)}\"")
-        buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
-        // KMK -->
-        buildConfigField("boolean", "UPDATER_ENABLED", "$updaterEnabled")
-        buildConfigField("String", "UPDATER_REPOSITORY", "\"$stableUpdaterRepository\"")
-        buildConfigField("String", "PREVIEW_UPDATER_REPOSITORY", "\"$previewUpdaterRepository\"")
-        // KMK <--
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -139,9 +113,7 @@ android {
             keepDebugSymbols += listOf(
                 "libandroidx.graphics.path",
                 "libarchive-jni",
-                "libconscrypt_jni",
                 "libimagedecoder",
-                "libquickjs",
                 "libsqlite3x",
             )
                 .map { "**/$it.so" }
@@ -171,7 +143,6 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
-        aidl = true
 
         // Disable some unused things
         renderScript = false
@@ -220,8 +191,6 @@ dependencies {
     implementation(projects.data)
     implementation(projects.domain)
     implementation(projects.presentationCore)
-    implementation(projects.presentationWidget)
-    implementation(projects.telemetry)
 
     // Compose
     implementation(compose.activity)
@@ -267,19 +236,10 @@ dependencies {
     // Job scheduling
     implementation(androidx.workmanager)
 
-    // RxJava
-    implementation(libs.rxjava)
-
-    // Networking
-    implementation(libs.bundles.okhttp)
     implementation(libs.okio)
-    implementation(libs.conscrypt.android) // TLS 1.3 support for Android < 10
 
     // Data serialization (JSON, protobuf, xml)
     implementation(kotlinx.bundles.serialization)
-
-    // HTML parser
-    implementation(libs.jsoup)
 
     // Disk
     implementation(libs.disklrucache)
@@ -311,7 +271,6 @@ dependencies {
     implementation(libs.bundles.voyager)
     implementation(libs.compose.materialmotion)
     implementation(libs.swipe)
-    implementation(libs.compose.webview)
     implementation(libs.compose.grid)
     implementation(libs.reorderable)
     implementation(libs.bundles.markdown)
@@ -328,18 +287,11 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.logcat)
 
-    // Shizuku
-    implementation(libs.bundles.shizuku)
-
-    // String similarity
-    implementation(libs.stringSimilarity)
-
     // Tests
     testImplementation(libs.bundles.test)
     testRuntimeOnly(libs.junit.platform.launcher)
 
     // For detecting memory leaks; see https://square.github.io/leakcanary/
-    // debugImplementation(libs.leakcanary.android)
     implementation(libs.leakcanary.plumber)
 
     testImplementation(kotlinx.coroutines.test)
@@ -347,16 +299,6 @@ dependencies {
     // SY -->
     // Better logging (EH)
     implementation(sylibs.xlog)
-
-    // RatingBar (SY)
-    implementation(sylibs.ratingbar)
-    implementation(sylibs.composeRatingbar)
-
-    // Google drive
-    implementation(sylibs.google.api.services.drive)
-
-    // ZXing Android Embedded
-    implementation(sylibs.zxing.android.embedded)
 }
 
 androidComponents {

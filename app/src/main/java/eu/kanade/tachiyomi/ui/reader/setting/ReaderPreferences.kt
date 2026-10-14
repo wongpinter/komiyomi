@@ -186,8 +186,6 @@ class ReaderPreferences(
 
     fun preserveReadingPosition() = preferenceStore.getBoolean("eh_preserve_reading_position", false)
 
-    fun preloadSize() = preferenceStore.getInt("eh_preload_size", 10)
-
     fun useAutoWebtoon() = preferenceStore.getBoolean("eh_use_auto_webtoon", true)
 
     fun continuousVerticalTappingByPage() = preferenceStore.getBoolean("continuous_vertical_tapping_by_page", false)

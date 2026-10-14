@@ -5,18 +5,12 @@ import android.net.Uri
 import eu.kanade.tachiyomi.data.backup.BackupDecoder
 import eu.kanade.tachiyomi.data.backup.BackupNotifier
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
-import eu.kanade.tachiyomi.data.backup.models.BackupExtensionStore
-import eu.kanade.tachiyomi.data.backup.models.BackupFeed
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
-import eu.kanade.tachiyomi.data.backup.models.BackupSavedSearch
 import eu.kanade.tachiyomi.data.backup.models.BackupSourcePreferences
 import eu.kanade.tachiyomi.data.backup.restore.restorers.CategoriesRestorer
-import eu.kanade.tachiyomi.data.backup.restore.restorers.ExtensionStoreRestorer
-import eu.kanade.tachiyomi.data.backup.restore.restorers.FeedRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.MangaRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.PreferenceRestorer
-import eu.kanade.tachiyomi.data.backup.restore.restorers.SavedSearchRestorer
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.createFileInCacheDir
 import kotlinx.coroutines.CoroutineScope
@@ -34,18 +28,9 @@ import java.util.Locale
 class BackupRestorer(
     private val context: Context,
     private val notifier: BackupNotifier,
-    private val isSync: Boolean,
-
     private val categoriesRestorer: CategoriesRestorer = CategoriesRestorer(),
     private val preferenceRestorer: PreferenceRestorer = PreferenceRestorer(context),
-    private val extensionStoreRestorer: ExtensionStoreRestorer = ExtensionStoreRestorer(),
-    private val mangaRestorer: MangaRestorer = MangaRestorer(isSync),
-    // SY -->
-    private val savedSearchRestorer: SavedSearchRestorer = SavedSearchRestorer(),
-    // SY <--
-    // KMK -->
-    private val feedRestorer: FeedRestorer = FeedRestorer(),
-    // KMK <--
+    private val mangaRestorer: MangaRestorer = MangaRestorer(),
 ) {
 
     private var restoreAmount = 0
@@ -71,7 +56,6 @@ class BackupRestorer(
             errors.size,
             logFile.parent,
             logFile.name,
-            isSync,
         )
     }
 
@@ -88,16 +72,8 @@ class BackupRestorer(
         if (options.categories) {
             restoreAmount += 1
         }
-        // SY -->
-        if (options.savedSearchesFeeds) {
-            restoreAmount += 1
-        }
-        // SY <--
         if (options.appSettings) {
             restoreAmount += 1
-        }
-        if (options.extensionStores) {
-            restoreAmount += backup.backupExtensionStores.size
         }
         if (options.sourceSettings) {
             restoreAmount += 1
@@ -107,16 +83,6 @@ class BackupRestorer(
             if (options.categories) {
                 restoreCategories(backup.backupCategories)
             }
-            // SY -->
-            if (options.savedSearchesFeeds) {
-                restoreSavedSearches(
-                    backup.backupSavedSearches,
-                    // KMK -->
-                    backup.backupFeeds,
-                    // KMK <--
-                )
-            }
-            // SY <--
             if (options.appSettings) {
                 restoreAppPreferences(backup.backupPreferences, backup.backupCategories.takeIf { options.categories })
             }
@@ -126,11 +92,6 @@ class BackupRestorer(
             if (options.libraryEntries) {
                 restoreManga(backup.backupManga, if (options.categories) backup.backupCategories else emptyList())
             }
-            if (options.extensionStores) {
-                restoreExtensionStores(backup.backupExtensionStores)
-            }
-
-            // TODO: optionally trigger online library + tracker update
         }
     }
 
@@ -145,41 +106,12 @@ class BackupRestorer(
                 context.stringResource(MR.strings.categories),
                 restoreProgress,
                 restoreAmount,
-                isSync,
             )
                 // KMK -->
                 .show(Notifications.ID_RESTORE_PROGRESS)
             // KMK <--
         }
     }
-
-    // SY -->
-    private fun CoroutineScope.restoreSavedSearches(
-        backupSavedSearches: List<BackupSavedSearch>,
-        // KMK -->
-        backupFeeds: List<BackupFeed>,
-        // KMK <--
-    ) = launch {
-        ensureActive()
-        savedSearchRestorer.restoreSavedSearches(backupSavedSearches)
-        // KMK -->
-        feedRestorer.restoreFeeds(backupFeeds)
-        // KMK <--
-
-        restoreProgress += 1
-        with(notifier) {
-            showRestoreProgress(
-                context.stringResource(KMR.strings.saved_searches_feeds),
-                restoreProgress,
-                restoreAmount,
-                isSync,
-            )
-                // KMK -->
-                .show(Notifications.ID_RESTORE_PROGRESS)
-            // KMK <--
-        }
-    }
-    // SY <--
 
     private fun CoroutineScope.restoreManga(
         backupMangas: List<BackupManga>,
@@ -198,7 +130,7 @@ class BackupRestorer(
 
                 restoreProgress += 1
                 with(notifier) {
-                    showRestoreProgress(it.title, restoreProgress, restoreAmount, isSync)
+                    showRestoreProgress(it.title, restoreProgress, restoreAmount)
                         // KMK -->
                         .show(Notifications.ID_RESTORE_PROGRESS)
                     // KMK <--
@@ -222,7 +154,6 @@ class BackupRestorer(
                 context.stringResource(MR.strings.app_settings),
                 restoreProgress,
                 restoreAmount,
-                isSync,
             )
                 // KMK -->
                 .show(Notifications.ID_RESTORE_PROGRESS)
@@ -240,42 +171,11 @@ class BackupRestorer(
                 context.stringResource(MR.strings.source_settings),
                 restoreProgress,
                 restoreAmount,
-                isSync,
             )
                 // KMK -->
                 .show(Notifications.ID_RESTORE_PROGRESS)
             // KMK <--
         }
-    }
-
-    private fun CoroutineScope.restoreExtensionStores(
-        backupExtensionStores: List<BackupExtensionStore>,
-    ) = launch {
-        backupExtensionStores
-            .forEach {
-                ensureActive()
-
-                try {
-                    extensionStoreRestorer(it)
-                } catch (e: Exception) {
-                    errors.add(Date() to "Error adding extension store: ${it.name} : ${e.message}")
-                }
-
-                restoreProgress += 1
-                // KMK -->
-                with(notifier) {
-                    // KMK <--
-                    showRestoreProgress(
-                        context.stringResource(MR.strings.extensionStores),
-                        restoreProgress,
-                        restoreAmount,
-                        isSync,
-                    )
-                        // KMK -->
-                        .show(Notifications.ID_RESTORE_PROGRESS)
-                    // KMK <--
-                }
-            }
     }
 
     private fun writeErrorLog(): File {

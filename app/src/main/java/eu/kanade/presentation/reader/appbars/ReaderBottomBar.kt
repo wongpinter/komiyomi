@@ -3,9 +3,7 @@ package eu.kanade.presentation.reader.appbars
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.FormatListNumbered
-import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
@@ -42,8 +40,6 @@ fun ReaderBottomBar(
     dualPageSplitEnabled: Boolean,
     doublePages: Boolean,
     onClickChapterList: () -> Unit,
-    onClickWebView: (() -> Unit)?,
-    onClickBrowser: (() -> Unit)?,
     onClickShare: (() -> Unit)?,
     onClickPageLayout: () -> Unit,
     onClickShiftPage: () -> Unit,
@@ -65,30 +61,6 @@ fun ReaderBottomBar(
                 Icon(
                     imageVector = Icons.Outlined.FormatListNumbered,
                     contentDescription = stringResource(MR.strings.chapters),
-                    // KMK -->
-                    tint = iconColor,
-                    // KMK <--
-                )
-            }
-        }
-
-        if (ReaderBottomButton.WebView.isIn(enabledButtons) && onClickWebView != null) {
-            IconButton(onClick = onClickWebView) {
-                Icon(
-                    imageVector = Icons.Outlined.Public,
-                    contentDescription = stringResource(MR.strings.action_open_in_web_view),
-                    // KMK -->
-                    tint = iconColor,
-                    // KMK <--
-                )
-            }
-        }
-
-        if (ReaderBottomButton.Browser.isIn(enabledButtons) && onClickBrowser != null) {
-            IconButton(onClick = onClickBrowser) {
-                Icon(
-                    imageVector = Icons.Outlined.Explore,
-                    contentDescription = stringResource(MR.strings.action_open_in_browser),
                     // KMK -->
                     tint = iconColor,
                     // KMK <--

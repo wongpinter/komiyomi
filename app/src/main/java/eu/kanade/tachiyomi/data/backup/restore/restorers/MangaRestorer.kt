@@ -7,7 +7,6 @@ import eu.kanade.tachiyomi.data.backup.models.BackupFlatMetadata
 import eu.kanade.tachiyomi.data.backup.models.BackupHistory
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupMergedMangaReference
-import eu.kanade.tachiyomi.data.backup.models.BackupTracking
 import exh.EXHMigrations
 import exh.source.MERGED_SOURCE_ID
 import tachiyomi.data.DatabaseHandler
@@ -25,9 +24,6 @@ import tachiyomi.domain.manga.interactor.InsertFlatMetadata
 import tachiyomi.domain.manga.interactor.SetCustomMangaInfo
 import tachiyomi.domain.manga.model.CustomMangaInfo
 import tachiyomi.domain.manga.model.Manga
-import tachiyomi.domain.track.interactor.GetTracks
-import tachiyomi.domain.track.interactor.InsertTrack
-import tachiyomi.domain.track.model.Track
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.time.ZonedDateTime
@@ -36,15 +32,11 @@ import kotlin.math.max
 import kotlin.math.min
 
 class MangaRestorer(
-    private var isSync: Boolean = false,
-
     private val handler: DatabaseHandler = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
     private val getMangaByUrlAndSourceId: GetMangaByUrlAndSourceId = Injekt.get(),
     private val getChaptersByMangaId: GetChaptersByMangaId = Injekt.get(),
     private val updateManga: UpdateManga = Injekt.get(),
-    private val getTracks: GetTracks = Injekt.get(),
-    private val insertTrack: InsertTrack = Injekt.get(),
     fetchInterval: FetchInterval = Injekt.get(),
     // SY -->
     private val setCustomMangaInfo: SetCustomMangaInfo = Injekt.get(),
@@ -99,7 +91,6 @@ class MangaRestorer(
                 categories = backupManga.categories,
                 backupCategories = backupCategories,
                 history = backupManga.history,
-                tracks = backupManga.tracking,
                 excludedScanlators = backupManga.excludedScanlators,
                 // SY -->
                 mergedMangaReferences = backupManga.mergedMangaReferences,
@@ -107,11 +98,6 @@ class MangaRestorer(
                 customManga = backupManga.getCustomMangaInfo(),
                 // SY <--
             )
-
-            if (isSync) {
-                mangasQueries.resetIsSyncing()
-                chaptersQueries.resetIsSyncing()
-            }
         }
     }
 
@@ -207,37 +193,22 @@ class MangaRestorer(
     }
 
     private fun updateChapterBasedOnSyncState(chapter: Chapter, dbChapter: Chapter): Chapter {
-        return if (isSync) {
-            chapter.copy(
+        return chapter.copyFrom(dbChapter)
+            .copy(
                 id = dbChapter.id,
                 bookmark = chapter.bookmark || dbChapter.bookmark,
-                read = chapter.read,
-                lastPageRead = chapter.lastPageRead,
-                // KMK -->
                 sourceOrder = max(chapter.sourceOrder, dbChapter.sourceOrder),
                 dateUpload = min(chapter.dateUpload, dbChapter.dateUpload),
-                // KMK <--
             )
-        } else {
-            chapter.copyFrom(dbChapter)
-                // KMK -->
-                .copy(
-                    id = dbChapter.id,
-                    bookmark = chapter.bookmark || dbChapter.bookmark,
-                    sourceOrder = max(chapter.sourceOrder, dbChapter.sourceOrder),
-                    dateUpload = min(chapter.dateUpload, dbChapter.dateUpload),
-                )
-                // KMK <--
-                .let {
-                    when {
-                        dbChapter.read && !it.read -> it.copy(read = true, lastPageRead = dbChapter.lastPageRead)
-                        it.lastPageRead == 0L && dbChapter.lastPageRead != 0L -> it.copy(
-                            lastPageRead = dbChapter.lastPageRead,
-                        )
-                        else -> it
-                    }
+            .let {
+                when {
+                    dbChapter.read && !it.read -> it.copy(read = true, lastPageRead = dbChapter.lastPageRead)
+                    it.lastPageRead == 0L && dbChapter.lastPageRead != 0L -> it.copy(
+                        lastPageRead = dbChapter.lastPageRead,
+                    )
+                    else -> it
                 }
-        }
+            }
     }
 
     private fun Chapter.forComparison() =
@@ -344,7 +315,6 @@ class MangaRestorer(
         categories: List<Long>,
         backupCategories: List<BackupCategory>,
         history: List<BackupHistory>,
-        tracks: List<BackupTracking>,
         excludedScanlators: List<String>,
         // SY -->
         mergedMangaReferences: List<BackupMergedMangaReference>,
@@ -354,7 +324,6 @@ class MangaRestorer(
     ): Manga {
         restoreCategories(manga, categories, backupCategories)
         restoreChapters(manga, chapters)
-        restoreTracking(manga, tracks)
         restoreHistory(manga, history)
         restoreExcludedScanlators(manga, excludedScanlators)
         updateManga.awaitUpdateFetchInterval(manga, now, currentFetchWindow)
@@ -442,60 +411,6 @@ class MangaRestorer(
                         it.chapterId,
                         it.readAt,
                         it.readDuration,
-                    )
-                }
-            }
-        }
-    }
-
-    private suspend fun restoreTracking(manga: Manga, backupTracks: List<BackupTracking>) {
-        val dbTrackByTrackerId = getTracks.await(manga.id).associateBy { it.trackerId }
-
-        val (existingTracks, newTracks) = backupTracks
-            .mapNotNull {
-                val track = it.getTrackImpl()
-                val dbTrack = dbTrackByTrackerId[track.trackerId]
-                    ?: // New track
-                    return@mapNotNull track.copy(
-                        id = 0, // Let DB assign new ID
-                        mangaId = manga.id,
-                    )
-
-                if (track.forComparison() == dbTrack.forComparison()) {
-                    // Same state; skip
-                    return@mapNotNull null
-                }
-
-                // Update to an existing track
-                dbTrack.copy(
-                    remoteId = track.remoteId,
-                    libraryId = track.libraryId,
-                    lastChapterRead = max(dbTrack.lastChapterRead, track.lastChapterRead),
-                )
-            }
-            .partition { it.id > 0 }
-
-        if (newTracks.isNotEmpty()) {
-            insertTrack.awaitAll(newTracks)
-        }
-        if (existingTracks.isNotEmpty()) {
-            handler.await(true) {
-                existingTracks.forEach { track ->
-                    manga_syncQueries.update(
-                        track.mangaId,
-                        track.trackerId,
-                        track.remoteId,
-                        track.libraryId,
-                        track.title,
-                        track.lastChapterRead,
-                        track.totalChapters,
-                        track.status,
-                        track.score,
-                        track.remoteUrl,
-                        track.startDate,
-                        track.finishDate,
-                        track.private,
-                        track.id,
                     )
                 }
             }
@@ -599,8 +514,6 @@ class MangaRestorer(
         return null
     }
     // SY <--
-
-    private fun Track.forComparison() = this.copy(id = 0L, mangaId = 0L)
 
     /**
      * Restores the excluded scanlators for the manga.

@@ -6,19 +6,13 @@ import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.data.backup.BackupFileValidator
 import eu.kanade.tachiyomi.data.backup.create.creators.CategoriesBackupCreator
-import eu.kanade.tachiyomi.data.backup.create.creators.ExtensionStoresBackupCreator
-import eu.kanade.tachiyomi.data.backup.create.creators.FeedBackupCreator
 import eu.kanade.tachiyomi.data.backup.create.creators.MangaBackupCreator
 import eu.kanade.tachiyomi.data.backup.create.creators.PreferenceBackupCreator
-import eu.kanade.tachiyomi.data.backup.create.creators.SavedSearchBackupCreator
 import eu.kanade.tachiyomi.data.backup.create.creators.SourcesBackupCreator
 import eu.kanade.tachiyomi.data.backup.models.Backup
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
-import eu.kanade.tachiyomi.data.backup.models.BackupExtensionStore
-import eu.kanade.tachiyomi.data.backup.models.BackupFeed
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
-import eu.kanade.tachiyomi.data.backup.models.BackupSavedSearch
 import eu.kanade.tachiyomi.data.backup.models.BackupSource
 import eu.kanade.tachiyomi.data.backup.models.BackupSourcePreferences
 import kotlinx.serialization.protobuf.ProtoBuf
@@ -54,15 +48,8 @@ class BackupCreator(
     private val categoriesBackupCreator: CategoriesBackupCreator = CategoriesBackupCreator(),
     private val mangaBackupCreator: MangaBackupCreator = MangaBackupCreator(),
     private val preferenceBackupCreator: PreferenceBackupCreator = PreferenceBackupCreator(),
-    private val extensionStoresBackupCreator: ExtensionStoresBackupCreator = ExtensionStoresBackupCreator(),
     private val sourcesBackupCreator: SourcesBackupCreator = SourcesBackupCreator(),
-    // KMK -->
-    private val feedBackupCreator: FeedBackupCreator = FeedBackupCreator(),
-    // KMK <--
-    // SY -->
-    private val savedSearchBackupCreator: SavedSearchBackupCreator = SavedSearchBackupCreator(),
     private val getMergedManga: GetMergedManga = Injekt.get(),
-    // SY <--
 ) {
 
     suspend fun backup(uri: Uri, options: BackupOptions): String {
@@ -101,16 +88,7 @@ class BackupCreator(
                 backupCategories = backupCategories(options),
                 backupSources = backupSources(backupManga),
                 backupPreferences = backupAppPreferences(options),
-                backupExtensionStores = backupExtensionStores(options),
                 backupSourcePreferences = backupSourcePreferences(options),
-
-                // SY -->
-                backupSavedSearches = backupSavedSearches(options),
-                // SY <--
-
-                // KMK -->
-                backupFeeds = backupFeeds(options),
-                // KMK <--
             )
 
             val byteArray = parser.encodeToByteArray(Backup.serializer(), backup)
@@ -165,36 +143,11 @@ class BackupCreator(
         return preferenceBackupCreator.createApp(includePrivatePreferences = options.privateSettings)
     }
 
-    internal suspend fun backupExtensionStores(options: BackupOptions): List<BackupExtensionStore> {
-        if (!options.extensionStores) return emptyList()
-
-        return extensionStoresBackupCreator()
-    }
-
     fun backupSourcePreferences(options: BackupOptions): List<BackupSourcePreferences> {
         if (!options.sourceSettings) return emptyList()
 
         return preferenceBackupCreator.createSource(includePrivatePreferences = options.privateSettings)
     }
-
-    // SY -->
-    suspend fun backupSavedSearches(options: BackupOptions): List<BackupSavedSearch> {
-        if (!options.savedSearchesFeeds) return emptyList()
-
-        return savedSearchBackupCreator()
-    }
-    // SY <--
-
-    // KMK -->
-    /**
-     * Backup global Popular/Latest feeds
-     */
-    suspend fun backupFeeds(options: BackupOptions): List<BackupFeed> {
-        if (!options.savedSearchesFeeds) return emptyList()
-
-        return feedBackupCreator()
-    }
-    // KMK <--
 
     companion object {
         private const val MAX_AUTO_BACKUPS: Int = 4

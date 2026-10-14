@@ -57,7 +57,5 @@ include(":i18n-sy")
 // SY <--
 include(":macrobenchmark")
 include(":presentation-core")
-include(":presentation-widget")
 include(":source-api")
 include(":source-local")
-include(":telemetry")

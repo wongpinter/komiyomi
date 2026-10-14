@@ -9,7 +9,6 @@ sealed interface StatsData {
     ) : StatsData
 
     data class Titles(
-        val globalUpdateItemCount: Int,
         val startedMangaCount: Int,
         val localMangaCount: Int,
     ) : StatsData
@@ -17,12 +16,5 @@ sealed interface StatsData {
     data class Chapters(
         val totalChapterCount: Int,
         val readChapterCount: Int,
-        val downloadCount: Int,
-    ) : StatsData
-
-    data class Trackers(
-        val trackedTitleCount: Int,
-        val meanScore: Double,
-        val trackerCount: Int,
     ) : StatsData
 }

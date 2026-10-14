@@ -14,7 +14,6 @@
 -keep,allowoptimization class okio.** { public protected *; }
 -keep,allowoptimization class org.jsoup.** { public protected *; }
 -keep,allowoptimization class rx.** { public protected *; }
--keep,allowoptimization class app.cash.quickjs.** { public protected *; }
 -keep,allowoptimization class uy.kohesive.injekt.** { public protected *; }
 -keep,allowoptimization class com.squareup.zstd.** { public protected *; }
 
@@ -133,16 +132,6 @@
 # XmlUtil
 -keep public enum nl.adaptivity.xmlutil.EventType { *; }
 
-# Firebase
--keep class com.google.firebase.installations.** { *; }
--keep interface com.google.firebase.installations.** { *; }
-
-# Google Drive
--keep class com.google.api.services.** { *; }
-
-# Google OAuth
--keep class com.google.api.client.** { *; }
-
 # SY -->
 # SqlCipher
 -keepclassmembers class net.zetetic.database.sqlcipher.SQLiteCustomFunction { *; }
@@ -173,14 +162,6 @@
 
 # === RxBinding
 -dontwarn com.google.auto.value.AutoValue
-
-# === Crashlytics
--keepattributes *Annotation*
--keepattributes SourceFile,LineNumberTable
--keep class com.crashlytics.** { *; }
--dontwarn com.crashlytics.**
--keep class com.google.firebase.crashlytics.** { *; }
--keep public class * extends java.lang.Exception  # Optional: Keep custom exceptions.
 
 # === Humanize + Guava: https://github.com/google/guava/wiki/UsingProGuardWithGuava
 -dontwarn javax.lang.model.element.Modifier

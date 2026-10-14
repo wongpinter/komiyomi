@@ -3,23 +3,16 @@ package eu.kanade.tachiyomi.data.cache
 import android.content.Context
 import android.text.format.Formatter
 import com.jakewharton.disklrucache.DiskLruCache
-import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.util.storage.DiskUtil
-import eu.kanade.tachiyomi.util.storage.saveTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.serialization.json.Json
 import logcat.LogPriority
-import okhttp3.Response
-import okio.buffer
-import okio.sink
 import tachiyomi.core.common.util.system.logcat
-import tachiyomi.domain.chapter.model.Chapter
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FilterInputStream
@@ -37,7 +30,6 @@ import java.io.OutputStream
  */
 class ChapterCache(
     private val context: Context,
-    private val json: Json,
     // SY -->
     readerPreferences: ReaderPreferences,
     // SY <--
@@ -106,111 +98,6 @@ class ChapterCache(
     }
     // KMK <--
     // <-- EH
-
-    /**
-     * Get page list from cache.
-     *
-     * @param chapter the chapter.
-     * @return the list of pages.
-     */
-    fun getPageListFromCache(chapter: Chapter): List<Page> {
-        // Get the key for the chapter.
-        val key = DiskUtil.hashKeyForDisk(getKey(chapter))
-
-        // Convert JSON string to list of objects. Throws an exception if snapshot is null
-        return diskCache.get(key).use {
-            json.decodeFromString(it.getString(0))
-        }
-    }
-
-    /**
-     * Add page list to disk cache.
-     *
-     * @param chapter the chapter.
-     * @param pages list of pages.
-     */
-    fun putPageListToCache(chapter: Chapter, pages: List<Page>) {
-        // Convert list of pages to json string.
-        val cachedValue = json.encodeToString(pages)
-
-        // Initialize the editor (edits the values for an entry).
-        var editor: DiskLruCache.Editor? = null
-
-        try {
-            // Get editor from md5 key.
-            val key = DiskUtil.hashKeyForDisk(getKey(chapter))
-            editor = diskCache.edit(key) ?: return
-
-            // Write chapter urls to cache.
-            editor.newOutputStream(0).sink().buffer().use {
-                it.write(cachedValue.toByteArray())
-                it.flush()
-            }
-
-            diskCache.flush()
-            editor.commit()
-            editor.abortUnlessCommitted()
-        } catch (e: Exception) {
-            logcat(LogPriority.WARN, e) { "Failed to put page list to cache" }
-            // Ignore.
-        } finally {
-            editor?.abortUnlessCommitted()
-        }
-    }
-
-    /**
-     * Returns true if image is in cache.
-     *
-     * @param imageUrl url of image.
-     * @return true if in cache otherwise false.
-     */
-    fun isImageInCache(imageUrl: String): Boolean {
-        return try {
-            diskCache.get(DiskUtil.hashKeyForDisk(imageUrl)).use { it != null }
-        } catch (_: IOException) {
-            false
-        }
-    }
-
-    /**
-     * Get image file from url.
-     *
-     * @param imageUrl url of image.
-     * @return path of image.
-     */
-    fun getImageFile(imageUrl: String): File {
-        // Get file from md5 key.
-        val imageName = DiskUtil.hashKeyForDisk(imageUrl) + ".0"
-        return File(diskCache.directory, imageName)
-    }
-
-    /**
-     * Add image to cache.
-     *
-     * @param imageUrl url of image.
-     * @param response http response from page.
-     * @throws IOException image error.
-     */
-    @Throws(IOException::class)
-    fun putImageToCache(imageUrl: String, response: Response) {
-        // Initialize editor (edits the values for an entry).
-        var editor: DiskLruCache.Editor? = null
-
-        try {
-            // Get editor from md5 key.
-            val key = DiskUtil.hashKeyForDisk(imageUrl)
-            editor = diskCache.edit(key) ?: return
-
-            // Get OutputStream and write image with Okio.
-            response.body.source().saveTo(editor.newOutputStream(0))
-
-            diskCache.flush()
-            editor.commit()
-        } finally {
-            response.body.close()
-            editor?.abortUnlessCommitted()
-        }
-    }
 
     // KMK -->
     fun getOrPutImageStream(imageUrl: String, source: () -> InputStream): InputStream {
@@ -321,10 +208,6 @@ class ChapterCache(
             logcat(LogPriority.WARN, e) { "Failed to remove file from cache" }
             false
         }
-    }
-
-    private fun getKey(chapter: Chapter): String {
-        return "${chapter.mangaId}${chapter.url}"
     }
 }
 

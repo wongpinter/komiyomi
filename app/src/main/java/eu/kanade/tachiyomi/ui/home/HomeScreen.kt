@@ -35,10 +35,7 @@ import eu.kanade.core.preference.asState
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
-import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
-import eu.kanade.tachiyomi.ui.library.LibraryTab
-import eu.kanade.tachiyomi.ui.libraryUpdateError.LibraryUpdateErrorScreen
-import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import eu.kanade.tachiyomi.ui.history.HistoryTab
 import eu.kanade.tachiyomi.ui.more.MoreTab
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
@@ -56,7 +53,6 @@ object HomeScreen : Screen() {
     @Suppress("unused")
     private fun readResolve(): Any = HomeScreen
 
-    private val librarySearchEvent = Channel<String>()
     private val openTabEvent = Channel<Tab>()
     private val showBottomNavEvent = Channel<Boolean>()
 
@@ -69,6 +65,7 @@ object HomeScreen : Screen() {
     private val TABS = listOf(
         // KMK -->
         LocalLibraryTab,
+        HistoryTab,
         OfflineBrowseTab,
         // KMK <--
         MoreTab,
@@ -161,39 +158,10 @@ object HomeScreen : Screen() {
 
             LaunchedEffect(Unit) {
                 launch {
-                    librarySearchEvent.receiveAsFlow().collectLatest {
-                        // KMK -->
-                        goToLibraryTab()
-                        // KMK <--
-                        LibraryTab.search(it)
-                    }
-                }
-                launch {
                     openTabEvent.receiveAsFlow().collectLatest {
                         tabNavigator.current = when (it) {
-                            // KMK -->
-                            is Tab.Library -> LocalLibraryTab
-
-                            Tab.Updates,
-                            Tab.History,
-                            -> LocalLibraryTab
-
-                            is Tab.Browse -> OfflineBrowseTab
-                            // KMK <--
-                            is Tab.More -> MoreTab
-                        }
-
-                        if (it is Tab.Library && it.mangaIdToOpen != null) {
-                            navigator.push(MangaScreen(it.mangaIdToOpen))
-                        }
-                        if (it is Tab.More) {
-                            if (it.toDownloads) {
-                                navigator.push(DownloadQueueScreen)
-                                // KMK -->
-                            } else if (it.toLibraryUpdateErrors) {
-                                navigator.push(LibraryUpdateErrorScreen())
-                                // KMK <--
-                            }
+                            Tab.Library -> LocalLibraryTab
+                            Tab.History -> HistoryTab
                         }
                     }
                 }
@@ -277,10 +245,6 @@ object HomeScreen : Screen() {
     }
     // KMK <--
 
-    suspend fun search(query: String) {
-        librarySearchEvent.send(query)
-    }
-
     suspend fun openTab(tab: Tab) {
         openTabEvent.send(tab)
     }
@@ -290,15 +254,7 @@ object HomeScreen : Screen() {
     }
 
     sealed interface Tab {
-        data class Library(val mangaIdToOpen: Long? = null) : Tab
-        data object Updates : Tab
+        data object Library : Tab
         data object History : Tab
-        data class Browse(val toExtensions: Boolean = false) : Tab
-        data class More(
-            val toDownloads: Boolean,
-            // KMK -->
-            val toLibraryUpdateErrors: Boolean = false,
-            // KMK <--
-        ) : Tab
     }
 }

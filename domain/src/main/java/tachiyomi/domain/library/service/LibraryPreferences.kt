@@ -71,13 +71,6 @@ class LibraryPreferences(
         ),
     )
 
-    fun autoUpdateMetadata() = preferenceStore.getBoolean("auto_update_metadata", false)
-
-    // KMK -->
-    fun fetchMetadataOnAdd() = preferenceStore.getBoolean("fetch_metadata_on_add", false)
-    fun fetchChaptersOnAdd() = preferenceStore.getBoolean("fetch_chapters_on_add", false)
-    // KMK <--
-
     fun showContinueReadingButton() = preferenceStore.getBoolean(
         "display_continue_reading_button",
         false,
@@ -86,11 +79,6 @@ class LibraryPreferences(
     fun markDuplicateReadChapterAsRead() = preferenceStore.getStringSet("mark_duplicate_read_chapter_read", emptySet())
 
     // region Filter
-
-    fun filterDownloaded() = preferenceStore.getEnum(
-        "pref_filter_library_downloaded_v2",
-        TriState.DISABLED,
-    )
 
     fun filterUnread() = preferenceStore.getEnum("pref_filter_library_unread_v2", TriState.DISABLED)
 
@@ -132,16 +120,9 @@ class LibraryPreferences(
     fun filterCategoriesExclude() = preferenceStore.getStringSet(FILTER_LIBRARY_CATEGORIES_EXCLUDE_PREF_KEY, emptySet())
     // KMK <--
 
-    fun filterTracking(id: Int) = preferenceStore.getEnum(
-        "pref_filter_library_tracked_${id}_v2",
-        TriState.DISABLED,
-    )
-
     // endregion
 
     // region Badges
-
-    fun downloadBadge() = preferenceStore.getBoolean("display_download_badge", false)
 
     fun unreadBadge() = preferenceStore.getBoolean("display_unread_badge", true)
 
@@ -189,11 +170,6 @@ class LibraryPreferences(
         Manga.SHOW_ALL,
     )
 
-    fun filterChapterByDownloaded() = preferenceStore.getLong(
-        "default_chapter_filter_by_downloaded",
-        Manga.SHOW_ALL,
-    )
-
     fun filterChapterByBookmarked() = preferenceStore.getLong(
         "default_chapter_filter_by_bookmarked",
         Manga.SHOW_ALL,
@@ -217,7 +193,6 @@ class LibraryPreferences(
 
     fun setChapterSettingsDefault(manga: Manga) {
         filterChapterByRead().set(manga.unreadFilterRaw)
-        filterChapterByDownloaded().set(manga.downloadedFilterRaw)
         filterChapterByBookmarked().set(manga.bookmarkedFilterRaw)
         sortChapterBySourceOrNumber().set(manga.sorting)
         displayChapterByNameOrNumber().set(manga.displayMode)

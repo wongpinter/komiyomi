@@ -31,6 +31,4 @@ open class BannerProgressStatus {
     }
 }
 
-class LibraryUpdateStatus : BannerProgressStatus()
-class SyncStatus : BannerProgressStatus()
 class BackupRestoreStatus : BannerProgressStatus()

@@ -19,9 +19,6 @@ fun ReaderTopBar(
     navigateUp: () -> Unit,
     bookmarked: Boolean,
     onToggleBookmarked: () -> Unit,
-    onOpenInWebView: (() -> Unit)?,
-    onOpenInBrowser: (() -> Unit)?,
-    onShare: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     AppBar(
@@ -51,30 +48,6 @@ fun ReaderTopBar(
                                 onClick = onToggleBookmarked,
                             ),
                         )
-                        onOpenInWebView?.let {
-                            add(
-                                AppBar.OverflowAction(
-                                    title = stringResource(MR.strings.action_open_in_web_view),
-                                    onClick = it,
-                                ),
-                            )
-                        }
-                        onOpenInBrowser?.let {
-                            add(
-                                AppBar.OverflowAction(
-                                    title = stringResource(MR.strings.action_open_in_browser),
-                                    onClick = it,
-                                ),
-                            )
-                        }
-                        onShare?.let {
-                            add(
-                                AppBar.OverflowAction(
-                                    title = stringResource(MR.strings.action_share),
-                                    onClick = it,
-                                ),
-                            )
-                        }
                     }
                     .build(),
             )

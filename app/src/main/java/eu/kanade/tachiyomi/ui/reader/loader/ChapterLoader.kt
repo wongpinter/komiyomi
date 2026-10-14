@@ -1,11 +1,7 @@
 package eu.kanade.tachiyomi.ui.reader.loader
 
 import android.content.Context
-import eu.kanade.tachiyomi.data.download.DownloadManager
-import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.source.Source
-import eu.kanade.tachiyomi.source.online.HttpSource
-import eu.kanade.tachiyomi.source.online.all.MergedSource
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import mihon.core.archive.ArchiveSection
@@ -14,39 +10,25 @@ import mihon.core.archive.epubReader
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
-import tachiyomi.domain.manga.model.Manga
-import tachiyomi.domain.manga.model.MergedMangaReference
 import tachiyomi.domain.source.model.StubSource
-import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.i18n.MR
 import tachiyomi.source.local.LocalSource
 import tachiyomi.source.local.io.Format
 
 /**
- * Loader used to retrieve the [PageLoader] for a given chapter.
+ * Loads pages from a chapter in the local library.
  */
 class ChapterLoader(
     private val context: Context,
-    private val downloadManager: DownloadManager,
-    private val downloadProvider: DownloadProvider,
-    private val manga: Manga,
     private val source: Source,
-    // SY -->
-    private val sourceManager: SourceManager,
     private val readerPrefs: ReaderPreferences,
-    private val mergedReferences: List<MergedMangaReference>,
-    private val mergedManga: Map<Long, Manga>?,
-    // SY <--
 ) {
 
     /**
-     * Assigns the chapter's page loader and loads the its pages. Returns immediately if the chapter
-     * is already loaded.
+     * Assigns the chapter's page loader and loads its pages. Returns if the chapter is ready.
      */
-    suspend fun loadChapter(chapter: ReaderChapter /* SY --> */, page: Int? = null/* SY <-- */) {
-        if (chapterIsReady(chapter)) {
-            return
-        }
+    suspend fun loadChapter(chapter: ReaderChapter, page: Int? = null) {
+        if (chapterIsReady(chapter)) return
 
         chapter.state = ReaderChapter.State.Loading
         withIOContext {
@@ -55,25 +37,13 @@ class ChapterLoader(
                 val loader = getPageLoader(chapter)
                 chapter.pageLoader = loader
 
-                val pages = loader.getPages()
-                    .onEach { it.chapter = chapter }
-
+                val pages = loader.getPages().onEach { it.chapter = chapter }
                 if (pages.isEmpty()) {
                     throw Exception(context.stringResource(MR.strings.page_list_empty_error))
                 }
 
-                // If the chapter is partially read, set the starting page to the last the user read
-                // otherwise use the requested page.
-                if (!chapter.chapter.read /* --> EH */ ||
-                    readerPrefs
-                        .preserveReadingPosition()
-                        .get() ||
-                    page != null || // <-- EH
-                    // KMK -->
-                    source is LocalSource
-                    // KMK <--
-                ) {
-                    chapter.requestedPage = /* SY --> */ page ?: /* SY <-- */ chapter.chapter.last_page_read
+                if (!chapter.chapter.read || readerPrefs.preserveReadingPosition().get() || page != null || source is LocalSource) {
+                    chapter.requestedPage = page ?: chapter.chapter.last_page_read
                 }
 
                 // KMK -->
@@ -88,94 +58,23 @@ class ChapterLoader(
         }
     }
 
-    /**
-     * Checks [chapter] to be loaded based on present pages and loader in addition to state.
-     */
-    private fun chapterIsReady(chapter: ReaderChapter): Boolean {
-        return chapter.state is ReaderChapter.State.Loaded && chapter.pageLoader != null
-    }
+    private fun chapterIsReady(chapter: ReaderChapter): Boolean =
+        chapter.state is ReaderChapter.State.Loaded && chapter.pageLoader != null
 
-    /**
-     * Returns the page loader to use for this [chapter].
-     */
-    private fun getPageLoader(chapter: ReaderChapter): PageLoader {
-        val dbChapter = chapter.chapter
-        val isDownloaded = downloadManager.isChapterDownloaded(
-            chapterName = dbChapter.name,
-            chapterScanlator = dbChapter.scanlator,
-            chapterUrl = dbChapter.url,
-            // SY -->
-            mangaTitle = manga.ogTitle,
-            // SY <--
-            sourceId = manga.source,
-            skipCache = true,
-        )
-        return when {
-            // SY -->
-            source is MergedSource -> {
-                val mangaReference = mergedReferences.firstOrNull {
-                    it.mangaId == chapter.chapter.manga_id
-                } ?: error("Merge reference null")
-                val source = sourceManager.get(mangaReference.mangaSourceId)
-                    ?: error("Source ${mangaReference.mangaSourceId} was null")
-                val manga = mergedManga?.get(chapter.chapter.manga_id) ?: error("Manga for merged chapter was null")
-                val isMergedMangaDownloaded = downloadManager.isChapterDownloaded(
-                    chapterName = chapter.chapter.name,
-                    chapterScanlator = chapter.chapter.scanlator,
-                    chapterUrl = chapter.chapter.url,
-                    mangaTitle = manga.ogTitle,
-                    sourceId = manga.source,
-                    skipCache = true,
+    private fun getPageLoader(chapter: ReaderChapter): PageLoader =
+        when (source) {
+            is LocalSource -> when (val format = source.getFormat(chapter.chapter)) {
+                is Format.Directory -> DirectoryPageLoader(format.file)
+                is Format.Archive -> ArchivePageLoader(
+                    format.file.archiveReader(context),
+                    // KMK -->
+                    format.file,
+                    cacheOfflinePages = true,
+                    // KMK <--
                 )
-                when {
-                    isMergedMangaDownloaded -> DownloadPageLoader(
-                        chapter = chapter,
-                        manga = manga,
-                        source = source,
-                        downloadManager = downloadManager,
-                        downloadProvider = downloadProvider,
-                    )
-                    source is HttpSource -> HttpPageLoader(chapter, source)
-                    source is LocalSource -> source.getFormat(chapter.chapter).let { format ->
-                        when (format) {
-                            is Format.Directory -> DirectoryPageLoader(format.file)
-                            is Format.Archive -> ArchivePageLoader(
-                                format.file.archiveReader(context),
-                                // KMK -->
-                                format.file,
-                                cacheOfflinePages = true,
-                                // KMK <--
-                            )
-                            is Format.Epub -> EpubPageLoader(format.file.epubReader(context))
-                        }
-                    }
-                    else -> error(context.stringResource(MR.strings.loader_not_implemented_error))
-                }
+                is Format.Epub -> EpubPageLoader(format.file.epubReader(context))
             }
-            // SY <--
-            isDownloaded -> DownloadPageLoader(
-                chapter,
-                manga,
-                source,
-                downloadManager,
-                downloadProvider,
-            )
-            source is LocalSource -> source.getFormat(chapter.chapter).let { format ->
-                when (format) {
-                    is Format.Directory -> DirectoryPageLoader(format.file)
-                    is Format.Archive -> ArchivePageLoader(
-                        format.file.archiveReader(context),
-                        // KMK -->
-                        format.file,
-                        cacheOfflinePages = true,
-                        // KMK <--
-                    )
-                    is Format.Epub -> EpubPageLoader(format.file.epubReader(context))
-                }
-            }
-            source is HttpSource -> HttpPageLoader(chapter, source)
-            source is StubSource -> error(context.stringResource(MR.strings.source_not_installed, source.toString()))
+            is StubSource -> error(context.stringResource(MR.strings.source_not_installed, source.toString()))
             else -> error(context.stringResource(MR.strings.loader_not_implemented_error))
         }
-    }
 }

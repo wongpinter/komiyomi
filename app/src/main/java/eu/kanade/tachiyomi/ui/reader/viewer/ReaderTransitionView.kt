@@ -16,10 +16,7 @@ import androidx.compose.ui.platform.AbstractComposeView
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.reader.ChapterTransition
 import eu.kanade.presentation.theme.TachiyomiTheme
-import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.ui.reader.model.ChapterTransition
-import tachiyomi.domain.manga.model.Manga
-import tachiyomi.source.local.isLocal
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -38,26 +35,8 @@ class ReaderTransitionView @JvmOverloads constructor(
         layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
     }
 
-    fun bind(transition: ChapterTransition, downloadManager: DownloadManager, manga: Manga?) {
-        data = if (manga != null) {
-            Data(
-                transition = transition,
-                currChapterDownloaded = transition.from.pageLoader?.isLocal == true,
-                goingToChapterDownloaded = manga.isLocal() ||
-                    transition.to?.chapter?.let { goingToChapter ->
-                        downloadManager.isChapterDownloaded(
-                            chapterName = goingToChapter.name,
-                            chapterScanlator = goingToChapter.scanlator,
-                            chapterUrl = goingToChapter.url,
-                            mangaTitle = /* SY --> */ manga.ogTitle, /* SY <-- */
-                            sourceId = manga.source,
-                            skipCache = true,
-                        )
-                    } ?: false,
-            )
-        } else {
-            null
-        }
+    fun bind(transition: ChapterTransition) {
+        data = Data(transition)
     }
 
     @Composable
@@ -78,8 +57,6 @@ class ReaderTransitionView @JvmOverloads constructor(
                 ) {
                     ChapterTransition(
                         transition = it.transition,
-                        currChapterDownloaded = it.currChapterDownloaded,
-                        goingToChapterDownloaded = it.goingToChapterDownloaded,
                     )
                 }
             }
@@ -88,7 +65,5 @@ class ReaderTransitionView @JvmOverloads constructor(
 
     private data class Data(
         val transition: ChapterTransition,
-        val currChapterDownloaded: Boolean,
-        val goingToChapterDownloaded: Boolean,
     )
 }

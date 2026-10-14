@@ -8,11 +8,6 @@ class UpdatesPreferences(
     private val preferenceStore: PreferenceStore,
 ) {
 
-    fun filterDownloaded() = preferenceStore.getEnum(
-        "pref_filter_updates_downloaded",
-        TriState.DISABLED,
-    )
-
     fun filterUnread() = preferenceStore.getEnum(
         "pref_filter_updates_unread",
         TriState.DISABLED,

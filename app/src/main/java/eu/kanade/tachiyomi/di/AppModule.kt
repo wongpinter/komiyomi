@@ -13,27 +13,13 @@ import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteDatabaseType
 import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteDriver
 import com.eygraber.sqldelight.androidx.driver.DefaultAndroidxSqliteConnectionFactory
 import com.eygraber.sqldelight.androidx.driver.FileProvider
-import eu.kanade.domain.track.store.DelayedTrackingStore
 import eu.kanade.tachiyomi.core.security.SecurityPreferences
 import eu.kanade.tachiyomi.data.BackupRestoreStatus
-import eu.kanade.tachiyomi.data.LibraryUpdateStatus
-import eu.kanade.tachiyomi.data.SyncStatus
 import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.data.cache.CoverCache
-import eu.kanade.tachiyomi.data.cache.PagePreviewCache
-import eu.kanade.tachiyomi.data.connections.ConnectionsManager
-import eu.kanade.tachiyomi.data.download.DownloadCache
-import eu.kanade.tachiyomi.data.download.DownloadManager
-import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.saver.ImageSaver
-import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
-import eu.kanade.tachiyomi.data.track.TrackerManager
-import eu.kanade.tachiyomi.extension.ExtensionManager
-import eu.kanade.tachiyomi.network.JavaScriptEngine
-import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.AndroidSourceManager
 import eu.kanade.tachiyomi.util.system.isDebugBuildType
-import exh.eh.EHentaiUpdateHelper
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import mihon.core.archive.CbzCrypto
@@ -165,21 +151,10 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory { UniFileTempFileManager(app) }
 
-        addSingletonFactory { ChapterCache(app, get(), get()) }
+        addSingletonFactory { ChapterCache(app, get()) }
         addSingletonFactory { CoverCache(app) }
 
-        addSingletonFactory { NetworkHelper(app, get()) }
-        addSingletonFactory { JavaScriptEngine(app) }
-
-        addSingletonFactory<SourceManager> { AndroidSourceManager(app, get(), get()) }
-        addSingletonFactory { ExtensionManager(app) }
-
-        addSingletonFactory { DownloadProvider(app) }
-        addSingletonFactory { DownloadManager(app) }
-        addSingletonFactory { DownloadCache(app) }
-
-        addSingletonFactory { TrackerManager() }
-        addSingletonFactory { DelayedTrackingStore(app) }
+        addSingletonFactory<SourceManager> { AndroidSourceManager(app, get()) }
 
         addSingletonFactory { ImageSaver(app) }
 
@@ -188,37 +163,17 @@ class AppModule(val app: Application) : InjektModule {
         addSingletonFactory { LocalCoverManager(app, get()) }
         addSingletonFactory { StorageManager(app, get()) }
 
-        // SY -->
-        addSingletonFactory { EHentaiUpdateHelper(app) }
-
-        addSingletonFactory { PagePreviewCache(app) }
-        // SY <--
-
-        // KMK -->
         addSingletonFactory { BackupRestoreStatus() }
-        addSingletonFactory { SyncStatus() }
-        addSingletonFactory { LibraryUpdateStatus() }
-        // KMK <--
-
-        // AM (CONNECTIONS) -->
-        addSingletonFactory { ConnectionsManager() }
-        // <-- AM (CONNECTIONS)
 
         // Asynchronously init expensive components for a faster cold start
         ContextCompat.getMainExecutor(app).execute {
-            get<NetworkHelper>()
-
             get<SourceManager>()
 
             get<Database>()
-
-            get<DownloadManager>()
 
             // SY -->
             get<GetCustomMangaInfo>()
             // SY <--
         }
-
-        addSingletonFactory { GoogleDriveService(app) }
     }
 }
