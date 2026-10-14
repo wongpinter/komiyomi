@@ -15,9 +15,10 @@ Requires Android 8.0 or later.
 
 - **Local library:** scan a selected folder and its subfolders to find CBZ and CBR comics.
 - **Folder browsing:** navigate your collection and open files in place.
+- **Library views:** switch between grid, list, and details views; choose compact covers, show or hide search, sort by title, folder, date, or size, and filter by reading status or favorites.
 - **Covers and metadata:** extract archive covers and read optional `ComicInfo.xml` metadata.
 - **Reading progress and bookmarks:** save your place locally and resume later.
-- **Reader modes:** page-by-page and continuous reading, with controls for manga and Western comics.
+- **Reader modes:** page-by-page and continuous reading, including a Webtoon preset and controls for manga and Western comics.
 - **Large archive support:** load pages on demand, with multi-gigabyte archives as a core performance focus instead of unpacking a whole book into memory.
 - **Chapter navigation:** move through chapter directories included inside an archive.
 
