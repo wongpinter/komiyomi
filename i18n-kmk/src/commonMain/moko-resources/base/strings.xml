@@ -92,6 +92,10 @@
     <string name="scale_type_20_9">20:9</string>
     <string name="scale_type_4_3">4:3</string>
     <string name="scale_type_3_2">3:2</string>
+    <!-- KMK -->
+    <string name="pref_apply_webtoon_preset">Apply Webtoon preset</string>
+    <string name="pref_apply_webtoon_preset_summary">Set Webtoon as the default reader, use portrait orientation, and show pages at full width.</string>
+    <!-- /KMK -->
     <!-- Preferences -->
       <!-- Appearance section -->
     <string name="pref_custom_theme_style">Custom theme style</string>

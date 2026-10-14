@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - master
     paths:
       - '**'
       - '!**.md'
@@ -61,21 +60,17 @@ jobs:
           path: app/build/reports/tests/testReleaseUnitTest
 
       - name: Rename apk
-        id: current_commit
+        id: artifact_name
         run: |
           set -e
-          version_tag=$(echo ${GITHUB_REF/refs\/heads\//} | sed -r 's/^refs\/(heads|tags)\///' | sed -r 's/[-\/]+/_/g')
-          commit_count=$(git rev-list --count HEAD)
-          echo "VERSION_TAG=$version_tag"
-          echo "VERSION_TAG=$version_tag" >> $GITHUB_OUTPUT
-          echo "COMMIT_COUNT=$commit_count"
-          echo "COMMIT_COUNT=$commit_count" >> $GITHUB_OUTPUT
-          mv app/build/outputs/apk/preview/app-universal-preview.apk Komiyomi-$version_tag-r$commit_count.apk
+          artifact_tag=$(echo ${GITHUB_REF/refs\/heads\//} | sed -r 's/^refs\/(heads|tags)\///' | sed -r 's/[-\/]+/_/g')
+          echo "ARTIFACT_TAG=$artifact_tag" >> $GITHUB_OUTPUT
+          mv app/build/outputs/apk/preview/app-universal-preview.apk Komiyomi-$artifact_tag.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: Komiyomi-${{ steps.current_commit.outputs.VERSION_TAG }}-r${{ steps.current_commit.outputs.COMMIT_COUNT }}.apk
+          name: Komiyomi-${{ steps.artifact_name.outputs.ARTIFACT_TAG }}.apk
           path: ./*.apk
 
       - name: Upload mapping

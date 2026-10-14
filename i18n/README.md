@@ -1,5 +1,5 @@
-# i18n
+# Shared strings and translations
 
-This module houses the string resources and translations.
+This module contains shared application strings and their translations. Its English base strings live in `src/commonMain/moko-resources/base/`.
 
-Original English strings are managed in `src/commonMain/moko-resources/base/`. Translations are done externally via Weblate. See [our website](https://mihon.app/docs/contribute#translation) for more details. 
+New Komiyomi strings belong in `i18n-kmk/src/commonMain/moko-resources/base/`. Weblate manages translated locale files; keep those files unchanged in source edits.

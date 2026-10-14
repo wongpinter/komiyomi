@@ -53,6 +53,15 @@ class ReaderPreferences(
         ReaderOrientation.FREE.flagValue,
     )
 
+    // KMK -->
+    fun applyWebtoonPreset() {
+        defaultReadingMode().set(ReadingMode.WEBTOON.flagValue)
+        defaultOrientationType().set(ReaderOrientation.PORTRAIT.flagValue)
+        webtoonScaleType().set(WebtoonScaleType.FIT)
+        webtoonSidePadding().set(WEBTOON_PADDING_MIN)
+    }
+    // KMK <--
+
     fun webtoonDoubleTapZoomEnabled() = preferenceStore.getBoolean("pref_enable_double_tap_zoom_webtoon", true)
 
     // KMK -->

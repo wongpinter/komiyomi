@@ -1,6 +1,5 @@
 import mihon.buildlogic.Config
 import mihon.buildlogic.getBuildTime
-import mihon.buildlogic.getCommitCount
 import mihon.buildlogic.getGitSha
 
 plugins {
@@ -24,11 +23,11 @@ android {
         // KMK <--
 
         // KMK -->
+        // Komiyomi release version: SemVer name and monotonically increasing Android code.
         versionCode = 1
         versionName = "1.0.0"
         // KMK <--
 
-        buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLastCommitTime = false)}\"")
 
@@ -38,7 +37,6 @@ android {
     buildTypes {
         val debug by getting {
             applicationIdSuffix = ".dev"
-            versionNameSuffix = "-${getCommitCount()}"
             isPseudoLocalesEnabled = true
         }
         val release by getting {
@@ -73,7 +71,6 @@ android {
 
             applicationIdSuffix = ".beta"
 
-            versionNameSuffix = debug.versionNameSuffix
             signingConfig = debug.signingConfig
 
             matchingFallbacks.addAll(commonMatchingFallbacks)
@@ -85,7 +82,7 @@ android {
 
             isDebuggable = false
             isProfileable = true
-            versionNameSuffix = "${debug.versionNameSuffix}-benchmark"
+            versionNameSuffix = "-benchmark"
             applicationIdSuffix = ".benchmark"
 
             signingConfig = debug.signingConfig

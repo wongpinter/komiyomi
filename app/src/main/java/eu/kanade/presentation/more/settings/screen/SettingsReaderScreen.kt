@@ -388,6 +388,13 @@ object SettingsReaderScreen : SearchableSettings {
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.webtoon_viewer),
             preferenceItems = persistentListOf(
+                // KMK -->
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(KMR.strings.pref_apply_webtoon_preset),
+                    subtitle = stringResource(KMR.strings.pref_apply_webtoon_preset_summary),
+                    onClick = readerPreferences::applyWebtoonPreset,
+                ),
+                // KMK <--
                 Preference.PreferenceItem.ListPreference(
                     preference = navModePref,
                     entries = ReaderPreferences.TapZones

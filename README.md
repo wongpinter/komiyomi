@@ -48,6 +48,10 @@ Use Android Studio with Android SDK 36 and JDK 21. Build a debug APK with:
 
 The debug application ID is `app.komiyomi.dev`; release builds use `app.komiyomi`.
 
+## Versioning
+
+Komiyomi uses Semantic Versioning for `versionName`. Increase Android `versionCode` for every release.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md). Bug reports and feature requests can be opened in [GitHub Issues](https://github.com/wongpinter/komiyomi/issues).
