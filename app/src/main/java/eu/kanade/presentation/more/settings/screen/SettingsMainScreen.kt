@@ -11,15 +11,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.CollectionsBookmark
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.GetApp
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Storage
-import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
@@ -45,13 +41,9 @@ import eu.kanade.presentation.more.settings.screen.about.AboutScreen
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.LocalBackPress
 import eu.kanade.presentation.util.Screen
-import exh.assets.EhAssets
-import exh.assets.ehassets.EhLogo
-import exh.assets.ehassets.MangadexLogo
 import kotlinx.collections.immutable.persistentListOf
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
-import tachiyomi.i18n.sy.SYMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import cafe.adriel.voyager.core.screen.Screen as VoyagerScreen
@@ -112,7 +104,12 @@ object SettingsMainScreen : Screen() {
             content = { contentPadding ->
                 val state = rememberLazyListState()
                 // SY -->
-                val items = items.filter { it.screen !is SearchableSettings || it.screen.isEnabled() }
+                // KMK -->
+                val items = items.filter {
+                    it.screen !is SearchableSettings ||
+                        (it.screen in offlineSettingsScreens && it.screen.isEnabled())
+                }
+                // KMK <--
                 // SY <--
                 val indexSelected = if (twoPane) {
                     items.indexOfFirst { it.screen::class == navigator.items.first()::class }
@@ -191,7 +188,9 @@ object SettingsMainScreen : Screen() {
         ),
         Item(
             titleRes = MR.strings.pref_category_library,
-            subtitleRes = MR.strings.pref_library_summary,
+            // KMK -->
+            subtitleRes = KMR.strings.offline_settings_library_summary,
+            // KMK <--
             icon = Icons.Outlined.CollectionsBookmark,
             screen = SettingsLibraryScreen,
         ),
@@ -201,32 +200,14 @@ object SettingsMainScreen : Screen() {
             icon = Icons.AutoMirrored.Outlined.ChromeReaderMode,
             screen = SettingsReaderScreen,
         ),
-        Item(
-            titleRes = MR.strings.pref_category_downloads,
-            subtitleRes = MR.strings.pref_downloads_summary,
-            icon = Icons.Outlined.GetApp,
-            screen = SettingsDownloadScreen,
-        ),
-        Item(
-            titleRes = MR.strings.pref_category_tracking,
-            subtitleRes = MR.strings.pref_tracking_summary,
-            icon = Icons.Outlined.Sync,
-            screen = SettingsTrackingScreen,
-        ),
+        // KMK -->
+        // Offline archives do not use downloads or tracking services.
+        // KMK <--
         // AM (CONNECTIONS) -->
-        Item(
-            titleRes = KMR.strings.pref_category_connections,
-            subtitleRes = KMR.strings.pref_connections_summary,
-            icon = Icons.Outlined.Link,
-            screen = SettingsConnectionScreen,
-        ),
+        // KMK -->
+        // Online connections are not part of the offline settings menu.
+        // KMK <--
         // <-- AM (CONNECTIONS)
-        Item(
-            titleRes = MR.strings.browse,
-            subtitleRes = MR.strings.pref_browse_summary,
-            icon = Icons.Outlined.Explore,
-            screen = SettingsBrowseScreen,
-        ),
         Item(
             titleRes = MR.strings.label_data_storage,
             subtitleRes = MR.strings.pref_backup_summary,
@@ -240,22 +221,15 @@ object SettingsMainScreen : Screen() {
             screen = SettingsSecurityScreen,
         ),
         // SY -->
-        Item(
-            titleRes = SYMR.strings.pref_category_eh,
-            subtitleRes = SYMR.strings.pref_ehentai_summary,
-            icon = EhAssets.EhLogo,
-            screen = SettingsEhScreen,
-        ),
-        Item(
-            titleRes = SYMR.strings.pref_category_mangadex,
-            subtitleRes = SYMR.strings.pref_mangadex_summary,
-            icon = EhAssets.MangadexLogo,
-            screen = SettingsMangadexScreen,
-        ),
+        // KMK -->
+        // Source-specific settings are omitted for local archives.
+        // KMK <--
         // SY <--
         Item(
             titleRes = MR.strings.pref_category_advanced,
-            subtitleRes = MR.strings.pref_advanced_summary,
+            // KMK -->
+            subtitleRes = KMR.strings.offline_settings_advanced_summary,
+            // KMK <--
             icon = Icons.Outlined.Code,
             screen = SettingsAdvancedScreen,
         ),

@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.reader.viewer.pager
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.os.SystemClock
 import android.view.LayoutInflater
 import androidx.annotation.ColorInt
 import androidx.core.view.isVisible
@@ -75,6 +76,10 @@ class PagerPageHolder(
      * Job for loading the page.
      */
     private var extraLoadJob: Job? = null
+
+    // KMK -->
+    private var archiveFirstPageStartedAtMs: Long? = null
+    // KMK <--
 
     init {
         loadJob = scope.launch { loadPageAndProcessStatus(1) }
@@ -171,6 +176,11 @@ class PagerPageHolder(
      * Called when the page is ready.
      */
     private suspend fun setImage() {
+        // KMK -->
+        if (page.index == 0 && page.archivePath != null) {
+            archiveFirstPageStartedAtMs = SystemClock.elapsedRealtime()
+        }
+        // KMK <--
         if (extraPage == null) {
             progressIndicator?.setProgress(0)
         } else {
@@ -431,6 +441,12 @@ class PagerPageHolder(
     override fun onImageLoaded() {
         super.onImageLoaded()
         progressIndicator?.hide()
+        // KMK -->
+        archiveFirstPageStartedAtMs?.let { startedAt ->
+            archiveFirstPageStartedAtMs = null
+            logcat { "Local archive first page displayed: elapsedMs=${SystemClock.elapsedRealtime() - startedAt}" }
+        }
+        // KMK <--
     }
 
     /**

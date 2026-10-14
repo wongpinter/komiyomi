@@ -46,8 +46,16 @@ object ImageUtil {
         if (File(name).extension.equals("cbi", ignoreCase = true)) return true
         // SY <--
 
-        val extension = name.substringAfterLast('.')
+        // KMK -->
+        val extension = name.substringAfterLast('.').lowercase(Locale.ROOT).let {
+            when (it) {
+                "jpeg", "jpe", "jfif" -> "jpg"
+                "heic" -> "heif"
+                else -> it
+            }
+        }
         return ImageType.entries.any { it.extension == extension } || openStream?.let { findImageType(it) } != null
+        // KMK <--
     }
 
     fun findImageType(openStream: () -> InputStream): ImageType? {

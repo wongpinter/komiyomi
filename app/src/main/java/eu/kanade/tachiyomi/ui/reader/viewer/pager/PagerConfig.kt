@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import tachiyomi.i18n.MR
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -37,6 +38,11 @@ class PagerConfig(
 
     var imageScaleType = 1
         private set
+
+    // KMK -->
+    private var westernComicMode = false
+    private val westernComicFitWidthScaleType = ReaderPreferences.ImageScaleType.indexOf(MR.strings.scale_type_fit_width) + 1
+    // KMK <--
 
     var imageZoomType = ReaderPageImageView.ZoomStartPosition.LEFT
         private set
@@ -104,7 +110,14 @@ class PagerConfig(
             )
 
         readerPreferences.imageScaleType()
-            .register({ imageScaleType = it }, { imagePropertyChangedListener?.invoke() })
+            .register(
+                {
+                    // KMK -->
+                    imageScaleType = if (westernComicMode) westernComicFitWidthScaleType else it
+                    // KMK <--
+                },
+                { imagePropertyChangedListener?.invoke() },
+            )
 
         readerPreferences.zoomStart()
             .register({ zoomTypeFromPreference(it) }, { imagePropertyChangedListener?.invoke() })
@@ -162,12 +175,12 @@ class PagerConfig(
         // KMK -->
         readerPreferences.pagedDisableZoomIn()
             .register(
-                { disableZoomIn = it },
+                { disableZoomIn = if (westernComicMode) false else it },
                 { imagePropertyChangedListener?.invoke() },
             )
         readerPreferences.pagedDoubleTapZoomEnabled()
             .register(
-                { doubleTapZoom = it },
+                { doubleTapZoom = if (westernComicMode) true else it },
                 { imagePropertyChangedListener?.invoke() },
             )
 
@@ -269,4 +282,14 @@ class PagerConfig(
             else -> Color.WHITE
         }
     }
+
+    // KMK -->
+    fun applyWesternComicMode() {
+        westernComicMode = true
+        imageScaleType = westernComicFitWidthScaleType
+        disableZoomIn = false
+        doubleTapZoom = true
+        imagePropertyChangedListener?.invoke()
+    }
+    // KMK <--
 }

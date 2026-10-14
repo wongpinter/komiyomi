@@ -4,6 +4,7 @@ import eu.kanade.domain.chapter.model.toDbChapter
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.ui.reader.loader.PageLoader
 import kotlinx.coroutines.flow.MutableStateFlow
+import mihon.core.archive.ArchiveSection
 import tachiyomi.core.common.util.system.logcat
 
 data class ReaderChapter(val chapter: Chapter) {
@@ -17,6 +18,11 @@ data class ReaderChapter(val chapter: Chapter) {
 
     val pages: List<ReaderPage>?
         get() = (state as? State.Loaded)?.pages
+
+    // KMK -->
+    val archiveSections: List<ArchiveSection>
+        get() = (state as? State.Loaded)?.archiveSections.orEmpty()
+    // KMK <--
 
     var pageLoader: PageLoader? = null
 
@@ -46,6 +52,8 @@ data class ReaderChapter(val chapter: Chapter) {
         data object Wait : State
         data object Loading : State
         data class Error(val error: Throwable) : State
-        data class Loaded(val pages: List<ReaderPage>) : State
+        // KMK -->
+        data class Loaded(val pages: List<ReaderPage>, val archiveSections: List<ArchiveSection> = emptyList()) : State
+        // KMK <--
     }
 }

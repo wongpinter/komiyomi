@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.webtoon
 
 import android.content.res.Resources
+import android.os.SystemClock
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -83,6 +84,10 @@ class WebtoonPageHolder(
      * Job for loading the page.
      */
     private var loadJob: Job? = null
+
+    // KMK -->
+    private var archiveFirstPageStartedAtMs: Long? = null
+    // KMK <--
 
     init {
         refreshLayoutParams()
@@ -192,6 +197,11 @@ class WebtoonPageHolder(
         progressIndicator.setProgress(0)
 
         val streamFn = page?.stream ?: return
+        // KMK -->
+        if (page?.let { it.index == 0 && it.archivePath != null } == true) {
+            archiveFirstPageStartedAtMs = SystemClock.elapsedRealtime()
+        }
+        // KMK <--
 
         try {
             val (source, isAnimated) = withIOContext {
@@ -261,6 +271,12 @@ class WebtoonPageHolder(
     private fun onImageDecoded() {
         progressContainer.isVisible = false
         removeErrorLayout()
+        // KMK -->
+        archiveFirstPageStartedAtMs?.let { startedAt ->
+            archiveFirstPageStartedAtMs = null
+            logcat { "Local archive first page displayed: elapsedMs=${SystemClock.elapsedRealtime() - startedAt}" }
+        }
+        // KMK <--
     }
 
     /**

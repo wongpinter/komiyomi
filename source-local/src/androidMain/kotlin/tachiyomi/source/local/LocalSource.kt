@@ -93,17 +93,19 @@ class LocalSource(
         val allowLocalSourceHiddenFolders = allowHiddenFiles()
         // SY <--
 
+        // KMK -->
         var mangaDirs = fileSystem.getFilesInBaseDirectory()
-            // Filter out files that are hidden and is not a folder
-            .filter {
-                it.isDirectory &&
+            .filter { file ->
+                val name = file.name.orEmpty()
+                if (file.isDirectory) {
                     // SY -->
-                    (
-                        !it.name.orEmpty().startsWith('.') ||
-                            allowLocalSourceHiddenFolders
-                        )
-                // SY <--
+                    (!name.startsWith('.') || allowLocalSourceHiddenFolders)
+                    // SY <--
+                } else {
+                    file.isFile && Archive.isSupported(file) && !name.startsWith('.')
+                }
             }
+            // KMK <--
             .distinctBy { it.name }
             .filter {
                 if (lastModifiedLimit == 0L && query.isBlank()) {
@@ -141,8 +143,10 @@ class LocalSource(
             .map { mangaDir ->
                 async {
                     SManga.create().apply {
-                        title = mangaDir.name.orEmpty()
+                        // KMK -->
+                        title = if (mangaDir.isDirectory) mangaDir.name.orEmpty() else mangaDir.nameWithoutExtension.orEmpty()
                         url = mangaDir.name.orEmpty()
+                        // KMK <--
 
                         // Try to find the cover
                         coverManager.find(mangaDir.name.orEmpty())?.let {
@@ -212,6 +216,21 @@ class LocalSource(
         coverManager.find(manga.url)?.let {
             manga.thumbnail_url = it.uri.toString()
         }
+
+        // KMK -->
+        val standaloneArchive = fileSystem.resolveFile(manga.url)
+            ?.takeIf { it.isFile && Archive.isSupported(it) }
+        if (standaloneArchive != null) {
+            try {
+                getComicInfoForChapter(standaloneArchive) { stream, _ ->
+                    setMangaDetailsFromComicInfoFile(stream, manga)
+                }
+            } catch (e: Throwable) {
+                logcat(LogPriority.ERROR, e) { "Error setting manga details from local metadata for ${manga.title}" }
+            }
+            return@withIOContext manga
+        }
+        // KMK <--
 
         // Augment manga details based on metadata files
         try {
@@ -362,13 +381,20 @@ class LocalSource(
 
     // Chapters
     private suspend fun getChapterList(manga: SManga): List<SChapter> = withIOContext {
-        val chapters = fileSystem.getFilesInMangaDirectory(manga.url)
+        // KMK -->
+        val standaloneArchive = fileSystem.resolveFile(manga.url)
+            ?.takeIf { it.isFile && Archive.isSupported(it) }
+        val chapterFiles = standaloneArchive?.let(::listOf) ?: fileSystem.getFilesInMangaDirectory(manga.url)
+        // KMK <--
+        val chapters = chapterFiles
             // Only keep supported formats
             .filterNot { it.name.orEmpty().startsWith('.') }
             .filter { it.isDirectory || Archive.isSupported(it) || it.extension.equals("epub", true) }
             .map { chapterFile ->
                 SChapter.create().apply {
-                    url = "${manga.url}/${chapterFile.name}"
+                    // KMK -->
+                    url = if (standaloneArchive != null) manga.url else "${manga.url}/${chapterFile.name}"
+                    // KMK <--
                     name = if (chapterFile.isDirectory) {
                         chapterFile.name
                     } else {
@@ -413,12 +439,12 @@ class LocalSource(
 
     fun getFormat(chapter: SChapter): Format {
         try {
-            val (mangaDirName, chapterName) = chapter.url.split('/', limit = 2)
-            return fileSystem.getBaseDirectory()
-                ?.findFile(mangaDirName)
-                ?.findFile(chapterName)
+            // KMK -->
+            val chapterFile = fileSystem.resolveFile(chapter.url)
+            return chapterFile
                 ?.let(Format.Companion::valueOf)
                 ?: throw Exception(context.stringResource(MR.strings.chapter_not_found))
+            // KMK <--
         } catch (_: Format.UnknownFormatException) {
             throw Exception(context.stringResource(MR.strings.local_invalid_format))
         } catch (e: Exception) {

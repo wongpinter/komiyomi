@@ -22,20 +22,41 @@ if (Config.includeTelemetry) {
 
 shortcutHelper.setFilePath("./shortcuts.xml")
 
+// KMK -->
+val stableUpdaterRepository = providers.gradleProperty("komiyomi-updater-repo").orNull.orEmpty()
+val previewUpdaterRepository = providers.gradleProperty("komiyomi-preview-updater-repo").orNull.orEmpty()
+val updaterRepositoryPattern = Regex("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
+require(stableUpdaterRepository.isBlank() || stableUpdaterRepository.matches(updaterRepositoryPattern)) {
+    "komiyomi-updater-repo must use the owner/repository format"
+}
+require(previewUpdaterRepository.isBlank() || previewUpdaterRepository.matches(updaterRepositoryPattern)) {
+    "komiyomi-preview-updater-repo must use the owner/repository format"
+}
+val updaterEnabled = Config.enableUpdater && (stableUpdaterRepository.isNotBlank() || previewUpdaterRepository.isNotBlank())
+// KMK <--
+
 android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "app.komikku"
+        // KMK -->
+        applicationId = "app.komiyomi"
+        // KMK <--
 
-        versionCode = 82
-        versionName = "1.14.1"
+        // KMK -->
+        versionCode = 1
+        versionName = "1.0.0"
+        // KMK <--
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLastCommitTime = false)}\"")
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
-        buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
+        // KMK -->
+        buildConfigField("boolean", "UPDATER_ENABLED", "$updaterEnabled")
+        buildConfigField("String", "UPDATER_REPOSITORY", "\"$stableUpdaterRepository\"")
+        buildConfigField("String", "PREVIEW_UPDATER_REPOSITORY", "\"$previewUpdaterRepository\"")
+        // KMK <--
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -95,6 +95,9 @@ data class BrowseSourceScreen(
      * which was previously opened from `SmartSearchScreen` */
     private val smartSearchConfig: SourcesScreen.SmartSearchConfig? = null,
     // SY <--
+    // KMK -->
+    private val toolbarTitle: String? = null,
+    // KMK <--
 ) : Screen(), AssistContentScreen {
 
     private var assistUrl: String? = null
@@ -121,12 +124,18 @@ data class BrowseSourceScreen(
         val state by screenModel.state.collectAsState()
 
         val navigator = LocalNavigator.currentOrThrow
-        val navigateUp: () -> Unit = {
-            when {
-                !state.isUserQuery && state.toolbarQuery != null -> screenModel.setToolbarQuery(null)
-                else -> navigator.pop()
+        // KMK -->
+        val navigateUp: (() -> Unit)? = if (navigator.canPop) {
+            {
+                when {
+                    !state.isUserQuery && state.toolbarQuery != null -> screenModel.setToolbarQuery(null)
+                    else -> navigator.pop()
+                }
             }
+        } else {
+            null
         }
+        // KMK <--
 
         // SY -->
         val context = LocalContext.current
@@ -138,7 +147,9 @@ data class BrowseSourceScreen(
             if (it is StubSource) {
                 MissingSourceScreen(
                     source = it,
-                    navigateUp = navigateUp,
+                    // KMK -->
+                    navigateUp = navigateUp ?: {},
+                    // KMK <--
                 )
                 return
             }
@@ -213,6 +224,9 @@ data class BrowseSourceScreen(
                             searchQuery = state.toolbarQuery,
                             onSearchQueryChange = screenModel::setToolbarQuery,
                             source = screenModel.source,
+                            // KMK -->
+                            titleOverride = toolbarTitle,
+                            // KMK <--
                             displayMode = screenModel.displayMode
                                 // KMK -->
                                 .takeIf {

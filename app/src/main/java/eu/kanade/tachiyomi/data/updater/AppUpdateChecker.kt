@@ -33,13 +33,19 @@ class AppUpdateChecker(
         // KMK <--
     ): GetApplicationRelease.Result {
         return withIOContext {
+            // KMK -->
+            val repository = getGithubRepo(peekIntoPreview)
+            if (repository.isBlank()) return@withIOContext GetApplicationRelease.Result.NoNewUpdate
+            // KMK <--
             val result = getApplicationRelease.await(
                 GetApplicationRelease.Arguments(
                     isFoss = isFossBuildType,
                     isPreview = isPreviewBuildType || peekIntoPreview,
                     commitCount = BuildConfig.COMMIT_COUNT.toInt(),
                     versionName = BuildConfig.VERSION_NAME,
-                    repository = getGithubRepo(peekIntoPreview),
+                    // KMK -->
+                    repository = repository,
+                    // KMK <--
                     forceCheck = forceCheck,
                 ),
             )
@@ -79,13 +85,19 @@ class AppUpdateChecker(
     // KMK -->
     suspend fun getReleaseNotes(): GetApplicationRelease.Result {
         return withIOContext {
+            // KMK -->
+            val repository = getGithubRepo(peekIntoPreview)
+            if (repository.isBlank()) return@withIOContext GetApplicationRelease.Result.NoNewUpdate
+            // KMK <--
             getApplicationRelease.awaitReleaseNotes(
                 GetApplicationRelease.Arguments(
                     isFoss = isFossBuildType,
                     isPreview = isPreviewBuildType || peekIntoPreview,
                     commitCount = BuildConfig.COMMIT_COUNT.toInt(),
                     versionName = BuildConfig.VERSION_NAME,
-                    repository = getGithubRepo(peekIntoPreview),
+                    // KMK -->
+                    repository = repository,
+                    // KMK <--
                 ),
             )
         }
@@ -93,14 +105,16 @@ class AppUpdateChecker(
     // KMK <--
 }
 
+// KMK -->
 val GITHUB_REPO: String by lazy { getGithubRepo() }
 
 fun getGithubRepo(peekIntoPreview: Boolean = false): String =
     if (isPreviewBuildType || peekIntoPreview) {
-        "komikku-app/komikku-preview"
+        BuildConfig.PREVIEW_UPDATER_REPOSITORY
     } else {
-        "komikku-app/komikku"
+        BuildConfig.UPDATER_REPOSITORY
     }
+// KMK <--
 
 val RELEASE_TAG: String by lazy { getReleaseTag() }
 
@@ -111,4 +125,8 @@ fun getReleaseTag(peekIntoPreview: Boolean = false): String =
         "v${BuildConfig.VERSION_NAME}"
     }
 
-val RELEASE_URL = "https://github.com/$GITHUB_REPO/releases/tag/$RELEASE_TAG"
+// KMK -->
+val RELEASE_URL = GITHUB_REPO.takeIf(String::isNotBlank)
+    ?.let { "https://github.com/$it/releases/tag/$RELEASE_TAG" }
+    .orEmpty()
+// KMK <--

@@ -259,7 +259,9 @@ private fun SearchResult(
 
 @Composable
 @NonRestartableComposable
-private fun getIndex() = settingScreens
+// KMK -->
+private fun getIndex() = offlineSettingsScreens
+// KMK <--
     // SY -->
     .filter(SearchableSettings::isEnabled)
     // SY <--
@@ -285,24 +287,19 @@ private fun getLocalizedBreadcrumb(path: String, node: String?, isLtr: Boolean):
     }
 }
 
-private val settingScreens = listOf(
-    SettingsAppearanceScreen,
-    SettingsLibraryScreen,
-    SettingsReaderScreen,
-    SettingsDownloadScreen,
-    SettingsTrackingScreen,
-    // AM (CONNECTIONS) -->
-    SettingsConnectionScreen,
-    // <-- AM (CONNECTIONS)
-    SettingsBrowseScreen,
-    SettingsDataScreen,
-    SettingsSecurityScreen,
-    // SY -->
-    SettingsEhScreen,
-    SettingsMangadexScreen,
-    // SY <--
-    SettingsAdvancedScreen,
-)
+// KMK -->
+// Settings search uses the same offline screens as the main menu.
+// KMK <--
+// AM (CONNECTIONS) -->
+// KMK -->
+// Connections are excluded from the offline search index.
+// KMK <--
+// <-- AM (CONNECTIONS)
+// SY -->
+// KMK -->
+// Online source settings are excluded from the offline search index.
+// KMK <--
+// SY <--
 
 private data class SettingsData(
     val title: String,

@@ -23,16 +23,23 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.reader.components.ArchiveChapterPicker
 import eu.kanade.presentation.reader.components.ChapterNavigator
+import eu.kanade.presentation.reader.components.PageBookmarkControls
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.R2LPagerViewer
 import kotlinx.collections.immutable.ImmutableSet
+import mihon.core.archive.ArchiveSection
 import tachiyomi.presentation.core.components.material.padding
 
 private val readerBarsSlideAnimationSpec = tween<IntOffset>(200)
@@ -99,8 +106,19 @@ fun ReaderAppBars(
     onClickPageLayout: () -> Unit,
     onClickShiftPage: () -> Unit,
     // SY <--
+    // KMK -->
+    archiveSections: List<ArchiveSection> = emptyList(),
+    pageBookmarks: List<Int> = emptyList(),
+    onTogglePageBookmark: (() -> Unit)? = null,
+    onRemovePageBookmark: (Int) -> Unit = {},
+    // KMK <--
 ) {
     val isRtl = viewer is R2LPagerViewer
+    // KMK -->
+    val archiveSectionIndex = archiveSections.indexOfFirst { currentPage - 1 in it.startPage..it.endPage }.coerceAtLeast(0)
+    val archiveSection = archiveSections.getOrNull(archiveSectionIndex)
+    var showArchiveChapters by remember(archiveSections) { mutableStateOf(false) }
+    // KMK <--
     val backgroundColor = MaterialTheme.colorScheme
         .surfaceColorAtElevation(3.dp)
         .copy(alpha = if (isSystemInDarkTheme()) 0.9f else 0.95f)
@@ -121,7 +139,9 @@ fun ReaderAppBars(
                         .background(backgroundColor)
                         .clickable(onClick = onClickTopAppBar),
                     mangaTitle = mangaTitle,
-                    chapterTitle = chapterTitle,
+                    // KMK -->
+                    chapterTitle = archiveSection?.name?.takeIf { it.isNotBlank() } ?: chapterTitle,
+                    // KMK <--
                     navigateUp = navigateUp,
                     bookmarked = bookmarked,
                     onToggleBookmarked = onToggleBookmarked,
@@ -132,6 +152,18 @@ fun ReaderAppBars(
                     // SY <--
                 )
                 // SY -->
+                // KMK -->
+                if (onTogglePageBookmark != null) {
+                    PageBookmarkControls(
+                        currentPage = currentPage,
+                        totalPages = totalPages,
+                        bookmarks = pageBookmarks,
+                        onToggle = onTogglePageBookmark,
+                        onRemove = onRemovePageBookmark,
+                        onJump = onPageIndexChange,
+                    )
+                }
+                // KMK <--
                 ExhUtils(
                     isVisible = isExhToolsVisible,
                     onSetExhUtilsVisibility = onSetExhUtilsVisibility,
@@ -183,6 +215,9 @@ fun ReaderAppBars(
                         isVerticalSlider = true,
                         currentPageText = currentPageText,
                         // SY <--
+                        // KMK -->
+                        archiveSections = archiveSections,
+                        // KMK <--
                     )
                 }
             }
@@ -217,6 +252,9 @@ fun ReaderAppBars(
                         isVerticalSlider = true,
                         currentPageText = currentPageText,
                         // SY <--
+                        // KMK -->
+                        archiveSections = archiveSections,
+                        // KMK <--
                     )
                 }
             }
@@ -248,6 +286,9 @@ fun ReaderAppBars(
                         isVerticalSlider = false,
                         currentPageText = currentPageText,
                         // SY <--
+                        // KMK -->
+                        archiveSections = archiveSections,
+                        // KMK <--
                     )
                 }
                 ReaderBottomBar(
@@ -268,7 +309,13 @@ fun ReaderAppBars(
                     currentReadingMode = currentReadingMode,
                     dualPageSplitEnabled = dualPageSplitEnabled,
                     doublePages = doublePages,
-                    onClickChapterList = onClickChapterList,
+                    // KMK -->
+                    onClickChapterList = if (archiveSections.size > 1) {
+                        { showArchiveChapters = true }
+                    } else {
+                        onClickChapterList
+                    },
+                    // KMK <--
                     onClickWebView = onOpenInWebView,
                     onClickBrowser = onOpenInBrowser,
                     onClickShare = onShare,
@@ -279,4 +326,17 @@ fun ReaderAppBars(
             }
         }
     }
+    // KMK -->
+    if (showArchiveChapters && archiveSections.isNotEmpty()) {
+        ArchiveChapterPicker(
+            sections = archiveSections,
+            currentSectionIndex = archiveSectionIndex,
+            onDismiss = { showArchiveChapters = false },
+            onSelect = {
+                showArchiveChapters = false
+                onPageIndexChange(it.startPage)
+            },
+        )
+    }
+    // KMK <--
 }

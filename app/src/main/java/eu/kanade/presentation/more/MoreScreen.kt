@@ -13,13 +13,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Label
-import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.CloudOff
-import androidx.compose.material.icons.outlined.GetApp
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
@@ -29,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -40,51 +34,39 @@ import eu.kanade.presentation.more.settings.widget.SwitchPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.ui.more.DownloadQueueState
 import eu.kanade.tachiyomi.util.system.openInBrowser
-import exh.pref.DelegateSourcePreferences
-import exh.source.ExhPreferences
 import tachiyomi.core.common.Constants
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
-import tachiyomi.i18n.sy.SYMR
 import tachiyomi.presentation.core.components.ScrollbarLazyColumn
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.components.material.TextButton
 import tachiyomi.presentation.core.components.material.padding
-import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
 
 @Composable
 fun MoreScreen(
-    downloadQueueStateProvider: () -> DownloadQueueState,
-    downloadedOnly: Boolean,
-    onDownloadedOnlyChange: (Boolean) -> Unit,
+    // KMK -->
+    // Only offline manager actions are exposed by this screen.
+    // KMK <--
     incognitoMode: Boolean,
     onIncognitoModeChange: (Boolean) -> Unit,
     // SY -->
-    showNavUpdates: Boolean,
-    showNavHistory: Boolean,
+    // KMK -->
+    // Updates and history are not navigation destinations in this app.
+    // KMK <--
     // SY <--
-    onClickDownloadQueue: () -> Unit,
     onClickCategories: () -> Unit,
     onClickStats: () -> Unit,
     onClickDataAndStorage: () -> Unit,
     onClickSettings: () -> Unit,
     onClickAbout: () -> Unit,
-    onClickBatchAdd: () -> Unit,
-    onClickUpdates: () -> Unit,
-    onClickHistory: () -> Unit,
-    // KMK -->
-    onClickLibraryUpdateErrors: () -> Unit,
-    // KMK <--
 ) {
     val uriHandler = LocalUriHandler.current
     // SY -->
-    val exhPreferences = remember { Injekt.get<ExhPreferences>() }
-    val delegateSourcePreferences = remember { Injekt.get<DelegateSourcePreferences>() }
+    // KMK -->
+    // Local manager actions do not depend on online source preferences.
+    // KMK <--
     // SY <--
 
     Scaffold { contentPadding ->
@@ -95,15 +77,9 @@ fun MoreScreen(
             item {
                 LogoHeader()
             }
-            item {
-                SwitchPreferenceWidget(
-                    title = stringResource(MR.strings.label_downloaded_only),
-                    subtitle = stringResource(MR.strings.downloaded_only_summary),
-                    icon = Icons.Outlined.CloudOff,
-                    checked = downloadedOnly,
-                    onCheckedChanged = onDownloadedOnlyChange,
-                )
-            }
+            // KMK -->
+            // Every item in this app is already a local archive.
+            // KMK <--
             item {
                 SwitchPreferenceWidget(
                     title = stringResource(MR.strings.pref_incognito_mode),
@@ -122,55 +98,14 @@ fun MoreScreen(
             item { HorizontalDivider() }
 
             // SY -->
-            if (!showNavUpdates) {
-                item {
-                    TextPreferenceWidget(
-                        title = stringResource(MR.strings.label_recent_updates),
-                        icon = Icons.Outlined.NewReleases,
-                        onPreferenceClick = onClickUpdates,
-                    )
-                }
-            }
-            if (!showNavHistory) {
-                item {
-                    TextPreferenceWidget(
-                        title = stringResource(MR.strings.label_recent_manga),
-                        icon = Icons.Outlined.History,
-                        onPreferenceClick = onClickHistory,
-                    )
-                }
-            }
+            // KMK -->
+            // Offline navigation has no updates or history links.
+            // KMK <--
             // SY <--
 
-            item {
-                val downloadQueueState = downloadQueueStateProvider()
-                TextPreferenceWidget(
-                    title = stringResource(MR.strings.label_download_queue),
-                    subtitle = when (downloadQueueState) {
-                        DownloadQueueState.Stopped -> null
-                        is DownloadQueueState.Paused -> {
-                            val pending = downloadQueueState.pending
-                            if (pending == 0) {
-                                stringResource(MR.strings.paused)
-                            } else {
-                                "${stringResource(MR.strings.paused)} • ${
-                                    pluralStringResource(
-                                        MR.plurals.download_queue_summary,
-                                        count = pending,
-                                        pending,
-                                    )
-                                }"
-                            }
-                        }
-                        is DownloadQueueState.Downloading -> {
-                            val pending = downloadQueueState.pending
-                            pluralStringResource(MR.plurals.download_queue_summary, count = pending, pending)
-                        }
-                    },
-                    icon = Icons.Outlined.GetApp,
-                    onPreferenceClick = onClickDownloadQueue,
-                )
-            }
+            // KMK -->
+            // Download queues are not used by the offline reader.
+            // KMK <--
             item {
                 TextPreferenceWidget(
                     title = stringResource(MR.strings.categories),
@@ -185,15 +120,6 @@ fun MoreScreen(
                     onPreferenceClick = onClickStats,
                 )
             }
-            // KMK -->
-            item {
-                TextPreferenceWidget(
-                    title = stringResource(KMR.strings.option_label_library_update_errors),
-                    icon = Icons.Outlined.NewReleases,
-                    onPreferenceClick = onClickLibraryUpdateErrors,
-                )
-            }
-            // KMK <--
             item {
                 TextPreferenceWidget(
                     title = stringResource(MR.strings.label_data_storage),
@@ -202,15 +128,9 @@ fun MoreScreen(
                 )
             }
             // SY -->
-            if (exhPreferences.isHentaiEnabled().get() || delegateSourcePreferences.delegateSources().get()) {
-                item {
-                    TextPreferenceWidget(
-                        title = stringResource(SYMR.strings.eh_batch_add),
-                        icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                        onPreferenceClick = onClickBatchAdd,
-                    )
-                }
-            }
+            // KMK -->
+            // Online batch imports are not used by the local manager.
+            // KMK <--
             // SY <--
 
             item { HorizontalDivider() }
@@ -237,9 +157,7 @@ fun MoreScreen(
                 )
             }
             // KMK -->
-            item {
-                Sponsor()
-            }
+            // Komiyomi credits and licenses are available in About.
             // KMK <--
         }
     }

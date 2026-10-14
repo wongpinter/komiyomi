@@ -55,7 +55,12 @@ internal class DownloadPageLoader(
     }
 
     private suspend fun getPagesFromArchive(file: UniFile): List<ReaderPage> {
-        val loader = ArchivePageLoader(file.archiveReader(context)).also { archivePageLoader = it }
+        val loader = ArchivePageLoader(
+            file.archiveReader(context),
+            // KMK -->
+            file,
+            // KMK <--
+        ).also { archivePageLoader = it }
         return loader.getPages()
     }
 

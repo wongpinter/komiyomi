@@ -15,15 +15,25 @@ actual class LocalSourceFileSystem(
         return getBaseDirectory()?.listFiles().orEmpty().toList()
     }
 
+    // KMK -->
+    actual fun resolveFile(relativePath: String): UniFile? {
+        val parts = relativePath.split('/')
+        if (parts.any { it.isEmpty() || it == "." || it == ".." }) return null
+        return parts.fold(getBaseDirectory()) { directory, name -> directory?.findFile(name) }
+    }
+    // KMK <--
+
     actual fun getMangaDirectory(name: String): UniFile? {
-        return getBaseDirectory()
-            ?.findFile(name)
+        // KMK -->
+        return resolveFile(name)
+            // KMK <--
             ?.takeIf { it.isDirectory }
     }
 
     actual fun getFilesInMangaDirectory(name: String): List<UniFile> {
-        return getBaseDirectory()
-            ?.findFile(name)
+        // KMK -->
+        return resolveFile(name)
+            // KMK <--
             ?.takeIf { it.isDirectory }
             ?.listFiles().orEmpty().toList()
     }

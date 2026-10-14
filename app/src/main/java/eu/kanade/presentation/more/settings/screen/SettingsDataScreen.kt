@@ -124,25 +124,51 @@ object SettingsDataScreen : SearchableSettings {
         val backupPreferences = Injekt.get<BackupPreferences>()
         val storagePreferences = Injekt.get<StoragePreferences>()
 
-        val syncPreferences = remember { Injekt.get<SyncPreferences>() }
-        val syncService by syncPreferences.syncService().collectAsState()
+        // KMK -->
+        // Local storage and backups do not require a cloud sync service.
+        // KMK <--
+
+        // KMK -->
+        val localSourceDirectoryPreference = storagePreferences.localSourceDirectory()
+        val localSourceDirectory by localSourceDirectoryPreference.collectAsState()
+        // KMK <--
 
         return persistentListOf(
             getStorageLocationPref(storagePreferences = storagePreferences),
             Preference.PreferenceItem.InfoPreference(stringResource(MR.strings.pref_storage_location_info)),
 
+            // KMK -->
+            getLocalSourceLocationPref(localSourceDirectoryPreference),
+            Preference.PreferenceItem.InfoPreference(stringResource(KMR.strings.pref_local_source_location_info)),
+            if (localSourceDirectory.isNotBlank()) {
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(KMR.strings.action_reset_local_source_location),
+                    onClick = { localSourceDirectoryPreference.set("") },
+                )
+            } else {
+                null
+            },
+            // KMK <--
+
             getBackupAndRestoreGroup(backupPreferences = backupPreferences),
             getDataGroup(),
             getExportGroup(),
-        ) +
-            // SY -->
-            getSyncPreferences(syncPreferences = syncPreferences, syncService = syncService)
+            // KMK -->
+        ).filterNotNull()
+        // KMK <--
+        // SY -->
+        // KMK -->
+        // Cloud sync is excluded from offline settings.
+        // KMK <--
         // SY <--
     }
 
     @Composable
     fun storageLocationPicker(
         storageDirPref: tachiyomi.core.common.preference.Preference<String>,
+        // KMK -->
+        readOnly: Boolean = false,
+        // KMK <--
     ): ManagedActivityResultLauncher<Uri?, Uri?> {
         val context = LocalContext.current
 
@@ -150,8 +176,10 @@ object SettingsDataScreen : SearchableSettings {
             contract = ActivityResultContracts.OpenDocumentTree(),
         ) { uri ->
             if (uri != null) {
+                // KMK -->
                 val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    if (readOnly) 0 else Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                // KMK <--
 
                 // For some reason InkBook devices do not implement the SAF properly. Persistable URI grants do not
                 // work. However, simply retrieving the URI and using it works fine for these devices. Access is not
@@ -230,6 +258,41 @@ object SettingsDataScreen : SearchableSettings {
             },
         )
     }
+
+    // KMK -->
+    @Composable
+    private fun getLocalSourceLocationPref(
+        localSourceDirectoryPreference: tachiyomi.core.common.preference.Preference<String>,
+    ): Preference.PreferenceItem.TextPreference {
+        val context = LocalContext.current
+        val localSourceDirectory by localSourceDirectoryPreference.collectAsState()
+        val pickLocalSourceDirectory = storageLocationPicker(localSourceDirectoryPreference, readOnly = true)
+        val selectedDirectory = remember(localSourceDirectory) {
+            runCatching {
+                UniFile.fromUri(context, localSourceDirectory.toUri())
+                    ?.takeIf { it.exists() && it.isDirectory && it.canRead() }
+                    ?.displayablePath
+            }.getOrNull()
+        }
+        val subtitle = if (localSourceDirectory.isBlank()) {
+            stringResource(KMR.strings.pref_local_source_location_default)
+        } else {
+            selectedDirectory ?: stringResource(KMR.strings.pref_local_source_location_unavailable)
+        }
+
+        return Preference.PreferenceItem.TextPreference(
+            title = stringResource(KMR.strings.pref_local_source_location),
+            subtitle = subtitle,
+            onClick = {
+                try {
+                    pickLocalSourceDirectory.launch(null)
+                } catch (_: Exception) {
+                    context.toast(MR.strings.file_picker_error)
+                }
+            },
+        )
+    }
+    // KMK <--
 
     @Composable
     private fun getBackupAndRestoreGroup(backupPreferences: BackupPreferences): Preference.PreferenceGroup {
@@ -457,7 +520,9 @@ object SettingsDataScreen : SearchableSettings {
                 options = exportOptions,
                 onConfirm = { options ->
                     exportOptions = options
-                    saveFileLauncher.launch("komikku_library.csv")
+                    // KMK -->
+                    saveFileLauncher.launch("komiyomi_library.csv")
+                    // KMK <--
                 },
                 onDismissRequest = { showDialog = false },
             )

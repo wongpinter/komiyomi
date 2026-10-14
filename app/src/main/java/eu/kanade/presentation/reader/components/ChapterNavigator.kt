@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.presentation.util.isTabletUi
+import mihon.core.archive.ArchiveSection
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Slider
 import tachiyomi.presentation.core.i18n.stringResource
@@ -63,7 +64,28 @@ fun ChapterNavigator(
     // SY <--
     totalPages: Int,
     onPageIndexChange: (Int) -> Unit,
+    // KMK -->
+    archiveSections: List<ArchiveSection> = emptyList(),
+    onPageIndexChangeFinished: (() -> Unit)? = null,
+    // KMK <--
 ) {
+    // KMK -->
+    if (archiveSections.isNotEmpty()) {
+        ArchiveChapterNavigator(
+            sections = archiveSections,
+            isRtl = isRtl,
+            isVerticalSlider = isVerticalSlider,
+            currentPage = currentPage,
+            totalPages = totalPages,
+            onPageIndexChange = onPageIndexChange,
+            onNextArchive = onNextChapter,
+            enabledNextArchive = enabledNext,
+            onPreviousArchive = onPreviousChapter,
+            enabledPreviousArchive = enabledPrevious,
+        )
+        return
+    }
+    // KMK <--
     // SY -->
     if (isVerticalSlider) {
         ChapterNavigatorVert(
@@ -75,6 +97,9 @@ fun ChapterNavigator(
             currentPageText = currentPageText,
             totalPages = totalPages,
             onPageIndexChange = onPageIndexChange,
+            // KMK -->
+            onPageIndexChangeFinished = onPageIndexChangeFinished,
+            // KMK <--
         )
         return
     }
@@ -159,6 +184,9 @@ fun ChapterNavigator(
                                 onPageIndexChange(it - 1)
                             },
                             interactionSource = interactionSource,
+                            // KMK -->
+                            onValueChangeFinished = onPageIndexChangeFinished,
+                            // KMK <--
                         )
 
                         Text(
@@ -201,6 +229,9 @@ fun ChapterNavigatorVert(
     // SY <--
     totalPages: Int,
     onPageIndexChange: (Int) -> Unit,
+    // KMK -->
+    onPageIndexChangeFinished: (() -> Unit)? = null,
+    // KMK <--
 ) {
     val isTabletUi = isTabletUi()
     val verticalPadding = if (isTabletUi) 24.dp else 8.dp
@@ -291,6 +322,9 @@ fun ChapterNavigatorVert(
                         onPageIndexChange(it - 1)
                     },
                     interactionSource = interactionSource,
+                    // KMK -->
+                    onValueChangeFinished = onPageIndexChangeFinished,
+                    // KMK <--
                 )
 
                 Text(

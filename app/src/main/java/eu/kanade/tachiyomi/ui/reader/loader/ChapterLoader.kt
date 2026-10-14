@@ -8,6 +8,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.source.online.all.MergedSource
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
+import mihon.core.archive.ArchiveSection
 import mihon.core.archive.archiveReader
 import mihon.core.archive.epubReader
 import tachiyomi.core.common.i18n.stringResource
@@ -67,12 +68,19 @@ class ChapterLoader(
                     readerPrefs
                         .preserveReadingPosition()
                         .get() ||
-                    page != null // <-- EH
+                    page != null || // <-- EH
+                    // KMK -->
+                    source is LocalSource
+                    // KMK <--
                 ) {
                     chapter.requestedPage = /* SY --> */ page ?: /* SY <-- */ chapter.chapter.last_page_read
                 }
 
-                chapter.state = ReaderChapter.State.Loaded(pages)
+                // KMK -->
+                val archivePaths = pages.mapNotNull { it.archivePath }
+                val sections = if (archivePaths.size == pages.size) ArchiveSection.fromPagePaths(archivePaths) else emptyList()
+                chapter.state = ReaderChapter.State.Loaded(pages, sections)
+                // KMK <--
             } catch (e: Throwable) {
                 chapter.state = ReaderChapter.State.Error(e)
                 throw e
@@ -131,7 +139,13 @@ class ChapterLoader(
                     source is LocalSource -> source.getFormat(chapter.chapter).let { format ->
                         when (format) {
                             is Format.Directory -> DirectoryPageLoader(format.file)
-                            is Format.Archive -> ArchivePageLoader(format.file.archiveReader(context))
+                            is Format.Archive -> ArchivePageLoader(
+                                format.file.archiveReader(context),
+                                // KMK -->
+                                format.file,
+                                cacheOfflinePages = true,
+                                // KMK <--
+                            )
                             is Format.Epub -> EpubPageLoader(format.file.epubReader(context))
                         }
                     }
@@ -149,7 +163,13 @@ class ChapterLoader(
             source is LocalSource -> source.getFormat(chapter.chapter).let { format ->
                 when (format) {
                     is Format.Directory -> DirectoryPageLoader(format.file)
-                    is Format.Archive -> ArchivePageLoader(format.file.archiveReader(context))
+                    is Format.Archive -> ArchivePageLoader(
+                        format.file.archiveReader(context),
+                        // KMK -->
+                        format.file,
+                        cacheOfflinePages = true,
+                        // KMK <--
+                    )
                     is Format.Epub -> EpubPageLoader(format.file.epubReader(context))
                 }
             }

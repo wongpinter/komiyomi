@@ -64,20 +64,12 @@ import java.time.ZoneId
 
 class AboutScreen : Screen() {
 
+    // KMK -->
     @Composable
     override fun Content() {
-        val scope = rememberCoroutineScope()
         val context = LocalContext.current
-        val uriHandler = LocalUriHandler.current
         val handleBack = LocalBackPress.current
         val navigator = LocalNavigator.currentOrThrow
-        var isCheckingUpdates by remember { mutableStateOf(false) }
-
-        // KMK -->
-        var isCheckingWhatsNew by remember { mutableStateOf(false) }
-        var isCheckingWhatsComing by remember { mutableStateOf(false) }
-        // KMK <--
-
         Scaffold(
             topBar = { scrollBehavior ->
                 AppBar(
@@ -87,209 +79,34 @@ class AboutScreen : Screen() {
                 )
             },
         ) { contentPadding ->
-            ScrollbarLazyColumn(
-                contentPadding = contentPadding,
-            ) {
+            ScrollbarLazyColumn(contentPadding = contentPadding) {
+                item { LogoHeader() }
                 item {
-                    LogoHeader()
+                    TextPreferenceWidget(
+                        title = stringResource(KMR.strings.komiyomi_app_name),
+                        subtitle = stringResource(KMR.strings.komiyomi_description),
+                    )
                 }
-
                 item {
                     TextPreferenceWidget(
                         title = stringResource(MR.strings.version),
                         subtitle = getVersionName(withBuildDate = true),
                         onPreferenceClick = {
-                            val deviceInfo = CrashLogUtil(context).getDebugInfo()
-                            context.copyToClipboard("Debug information", deviceInfo)
+                            context.copyToClipboard("Debug information", CrashLogUtil(context).getDebugInfo())
                         },
                     )
                 }
-
-                if (updaterEnabled) {
-                    item {
-                        TextPreferenceWidget(
-                            title = stringResource(MR.strings.check_for_updates),
-                            widget = {
-                                AnimatedVisibility(visible = isCheckingUpdates) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(28.dp),
-                                        strokeWidth = 3.dp,
-                                    )
-                                }
-                            },
-                            onPreferenceClick = {
-                                if (!isCheckingUpdates) {
-                                    scope.launch {
-                                        isCheckingUpdates = true
-
-                                        checkVersion(
-                                            context = context,
-                                            onAvailableUpdate = { result ->
-                                                val updateScreen = NewUpdateScreen(
-                                                    versionName = result.release.version,
-                                                    changelogInfo = result.release.info,
-                                                    releaseLink = result.release.releaseLink,
-                                                    downloadLink = result.release.downloadLink,
-                                                )
-                                                navigator.push(updateScreen)
-                                            },
-                                            onFinish = {
-                                                isCheckingUpdates = false
-                                            },
-                                        )
-                                    }
-                                }
-                            },
-                        )
-                    }
-                }
-
-                // KMK -->
-                item {
-                    TextPreferenceWidget(
-                        title = stringResource(MR.strings.whats_new),
-                        widget = {
-                            AnimatedVisibility(visible = isCheckingWhatsNew) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(28.dp),
-                                    strokeWidth = 3.dp,
-                                )
-                            }
-                        },
-                        onPreferenceClick = {
-                            if (!isCheckingWhatsNew) {
-                                scope.launch {
-                                    isCheckingWhatsNew = true
-
-                                    getReleaseNotes(
-                                        context = context,
-                                        onAvailableUpdate = { result ->
-                                            val whatsNewScreen = WhatsNewScreen(
-                                                currentVersion = BuildConfig.VERSION_NAME,
-                                                versionName = result.release.version,
-                                                changelogInfo = result.release.info,
-                                                releaseLink = result.release.releaseLink,
-                                            )
-                                            navigator.push(whatsNewScreen)
-                                        },
-                                        onFinish = {
-                                            isCheckingWhatsNew = false
-                                        },
-                                    )
-                                }
-                            }
-                        },
-                    )
-                }
-
-                if (isReleaseBuildType || isDebugBuildType) {
-                    item {
-                        TextPreferenceWidget(
-                            title = stringResource(KMR.strings.whats_coming),
-                            widget = {
-                                AnimatedVisibility(visible = isCheckingWhatsComing) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(28.dp),
-                                        strokeWidth = 3.dp,
-                                    )
-                                }
-                            },
-                            onPreferenceClick = {
-                                if (!isCheckingWhatsComing) {
-                                    scope.launch {
-                                        isCheckingWhatsComing = true
-
-                                        checkVersion(
-                                            context = context,
-                                            onAvailableUpdate = { result ->
-                                                val updateScreen = ComingUpdatesScreen(
-                                                    versionName = result.release.version,
-                                                    changelogInfo = result.release.info,
-                                                    releaseLink = result.release.releaseLink,
-                                                    downloadLink = result.release.downloadLink,
-                                                )
-                                                navigator.push(updateScreen)
-                                            },
-                                            onFinish = {
-                                                isCheckingWhatsComing = false
-                                            },
-                                            peekIntoPreview = true,
-                                        )
-                                    }
-                                }
-                            },
-                        )
-                    }
-                }
-                // KMK <--
-
-                item {
-                    TextPreferenceWidget(
-                        title = stringResource(MR.strings.help_translate),
-                        onPreferenceClick = {
-                            uriHandler.openUri(
-                                "https://hosted.weblate.org/engage/komikku-app/",
-                            )
-                        },
-                    )
-                }
-
                 item {
                     TextPreferenceWidget(
                         title = stringResource(MR.strings.licenses),
+                        subtitle = stringResource(KMR.strings.komiyomi_credits),
                         onPreferenceClick = { navigator.push(OpenSourceLicensesScreen()) },
                     )
-                }
-
-                item {
-                    TextPreferenceWidget(
-                        title = stringResource(MR.strings.privacy_policy),
-                        onPreferenceClick = { uriHandler.openUri("https://komikku-app.github.io/privacy/") },
-                    )
-                }
-
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        LinkIcon(
-                            label = stringResource(MR.strings.website),
-                            icon = Icons.Outlined.Public,
-                            url = "https://komikku-app.github.io",
-                        )
-                        LinkIcon(
-                            label = "Discord",
-                            icon = CustomIcons.Discord,
-                            url = "https://discord.gg/85jB7V5AJR",
-                        )
-                        // LinkIcon(
-                        //     label = "X",
-                        //     icon = CustomIcons.X,
-                        //     url = "https://x.com/mihonapp",
-                        // )
-                        // LinkIcon(
-                        //     label = "Facebook",
-                        //     icon = CustomIcons.Facebook,
-                        //     url = "https://facebook.com/mihonapp",
-                        // )
-                        // LinkIcon(
-                        //     label = "Reddit",
-                        //     icon = CustomIcons.Reddit,
-                        //     url = "https://www.reddit.com/r/mihonapp",
-                        // )
-                        LinkIcon(
-                            label = "GitHub",
-                            icon = CustomIcons.Github,
-                            url = "https://github.com/komikku-app",
-                        )
-                    }
                 }
             }
         }
     }
+    // KMK <--
 
     /**
      * Checks version and shows a user prompt if an update is available.

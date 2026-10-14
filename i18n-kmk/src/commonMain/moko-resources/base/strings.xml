@@ -1,5 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- KMK -->
+    <string name="offline_bookmark_save_failed">Could not save the page bookmark. Please try again.</string>
+    <string name="offline_continue_reading">Continue reading</string>
+    <string name="offline_status_all">All</string>
+    <string name="offline_status_unread">Unread</string>
+    <string name="offline_status_reading">Reading</string>
+    <string name="offline_status_completed">Completed</string>
+    <string name="offline_favorites">Favorites</string>
+    <string name="offline_add_favorite">Add to favorites</string>
+    <string name="offline_remove_favorite">Remove from favorites</string>
+    <string name="offline_grid_view">Grid view</string>
+    <string name="offline_list_view">List view</string>
+    <string name="offline_cover_size">Cover size</string>
+    <string name="offline_covers_small">Small</string>
+    <string name="offline_covers_medium">Medium</string>
+    <string name="offline_covers_large">Large</string>
+    <string name="offline_read_percent">%1$d%% read</string>
+    <string name="offline_no_filter_matches">No comics match these filters.</string>
+    <string name="offline_bookmark_page">Bookmark page</string>
+    <string name="offline_remove_page_bookmark">Remove page bookmark</string>
+    <string name="offline_page_bookmark_count">Bookmarks (%1$d)</string>
+    <string name="offline_page_bookmarks">Page bookmarks</string>
+    <string name="offline_no_page_bookmarks">No saved page bookmarks.</string>
+    <string name="offline_page_number">Page %1$d</string>
+    <string name="offline_sort_by">Sort: %1$s</string>
+    <string name="offline_sort_title">Title</string>
+    <string name="offline_sort_folder">Folder</string>
+    <string name="offline_sort_modified">Modified date</string>
+    <string name="offline_sort_size">File size</string>
+    <string name="offline_sort_ascending">Ascending order</string>
+    <string name="offline_sort_descending">Descending order</string>
+    <string name="komiyomi_app_name" translatable="false">Komiyomi</string>
+    <string name="komiyomi_hiragana" translatable="false">こみよみ</string>
+    <string name="komiyomi_description">An offline reader for your local CBZ and CBR comics.</string>
+    <string name="komiyomi_credits">Built on Komikku, Mihon, and TachiyomiSY.</string>
+    <string name="offline_choose_folder">Choose comic folder</string>
+    <string name="offline_rescan">Scan folder again</string>
+    <string name="offline_scan_progress">Scanning: %1$d folders · %2$d comics</string>
+    <string name="offline_entry_count">%1$d comics · %2$d folders</string>
+    <string name="offline_unreadable_folders">Could not read %1$d folders. Check their access permissions.</string>
+    <string name="offline_folder_unavailable">Comic folder is unavailable. Choose a folder to grant access.</string>
+    <string name="offline_folder_empty">No CBZ/CBR files found. Choose a comic folder or scan again.</string>
+    <string name="offline_open_failed">Could not open this comic. Check that the file is still available and try again.</string>
+    <string name="offline_settings_library_summary">Categories and reading behavior</string>
+    <string name="offline_settings_advanced_summary">Diagnostics, local data, and image decoding</string>
+    <string name="offline_archive_cache">Archive page cache</string>
+    <!-- /KMK -->
     <!-- Actions -->
     <string name="action_search_for_source">Search for sources</string>
     <string name="action_source_search">Search in source</string>
@@ -17,6 +64,9 @@
     <string name="action_open_folder">Open folder</string>
     <string name="action_clear_manga">Clear manga</string>
     <string name="action_update">Update</string>
+    <!-- KMK -->
+    <string name="action_reset_local_source_location">Use default Local Source folder</string>
+    <!-- /KMK -->
         <!-- History section -->
     <string name="action_filter_unfinished_manga">Unfinished manga</string>
     <string name="action_filter_unfinished_chapter">Unfinished chapter</string>
@@ -31,6 +81,10 @@
     <string name="pref_pinch_to_zoom">Pinch to zoom</string>
     <string name="pref_paged_disable_zoom_in">Disable zoom in</string>
     <string name="pref_landscape_zoom_type">Wide images zoom mode</string>
+    <!-- KMK -->
+    <string name="reader_western_comic_mode">Western comics mode</string>
+    <string name="reader_western_comic_mode_summary">Use left-to-right pages, fit-width scaling, and zoom for this series.</string>
+    <!-- /KMK -->
     <string name="scale_type_double">Double zoom</string>
     <string name="pref_webtoon_scale_type">Smart scale on wide screen</string>
     <string name="pref_smart_scale_long_strip_gap">Apply Smart scale to Long strip with gaps</string>
@@ -91,6 +145,12 @@
     <string name="custom_theme_palette_pico">PICO-8</string>
     <!-- Library section -->
     <string name="pref_show_updating_progress_banner">Show updating progress banner</string>
+    <!-- KMK -->
+    <string name="pref_local_source_location">Local Source folder</string>
+    <string name="pref_local_source_location_default">Default: storage location/local</string>
+    <string name="pref_local_source_location_unavailable">Selected folder is unavailable</string>
+    <string name="pref_local_source_location_info">Choose the folder that already contains your CBZ/CBR files. Files stay in place.</string>
+    <!-- /KMK -->
     <string name="action_display_source_badge">Source icon</string>
     <string name="action_display_language_icon">Use language icon</string>
     <string name="pref_library_filter_categories_details">Entries in excluded categories will not be shown even if they are also in included categories.</string>
@@ -238,4 +298,15 @@
     <string name="pref_discord_show_download_button_summary">Displays a button to download the app</string>
     <string name="pref_discord_show_discord_button">Show Discord Button</string>
     <string name="pref_discord_show_discord_button_summary">Displays a button to join the Discord server</string>
+    <!-- KMK -->
+    <string name="archive_chapters">Chapters in archive</string>
+    <string name="archive_root_pages">Pages</string>
+    <string name="archive_total_position">Total: %1$d / %2$d</string>
+    <string name="archive_section_position">%1$d / %2$d</string>
+    <string name="archive_page_range">Pages %1$d–%2$d</string>
+    <string name="archive_find_chapter">Find chapter</string>
+    <string name="archive_go_to_page">Go to page</string>
+    <string name="archive_page_number">Page number</string>
+    <string name="archive_no_chapters_found">No matching chapters</string>
+    <!-- /KMK -->
 </resources>

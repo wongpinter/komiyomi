@@ -29,9 +29,14 @@ fun BrowseSourceToolbar(
     searchQuery: String?,
     onSearchQueryChange: (String?) -> Unit,
     source: Source?,
+    // KMK -->
+    titleOverride: String? = null,
+    // KMK <--
     displayMode: LibraryDisplayMode?,
     onDisplayModeChange: (LibraryDisplayMode) -> Unit,
-    navigateUp: () -> Unit,
+    // KMK -->
+    navigateUp: (() -> Unit)?,
+    // KMK <--
     onWebViewClick: () -> Unit,
     onHelpClick: () -> Unit,
     // KMK -->
@@ -46,7 +51,9 @@ fun BrowseSourceToolbar(
     // KMK <--
 ) {
     // Avoid capturing unstable source in actions lambda
-    val title = source?.name
+    // KMK -->
+    val title = titleOverride ?: source?.name
+    // KMK <--
     val isLocalSource = source is LocalSource
 
     var selectingDisplayMode by remember { mutableStateOf(false) }
@@ -57,7 +64,9 @@ fun BrowseSourceToolbar(
         searchQuery = searchQuery,
         onChangeSearchQuery = onSearchQueryChange,
         onSearch = onSearch,
-        onClickCloseSearch = navigateUp,
+        // KMK -->
+        onClickCloseSearch = navigateUp ?: { onSearchQueryChange(null) },
+        // KMK <--
         actions = {
             AppBarActions(
                 actions = persistentListOf<AppBar.AppBarAction>().builder()

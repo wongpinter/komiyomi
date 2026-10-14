@@ -1,10 +1,15 @@
 package tachiyomi.domain.chapter.repository
 
 import kotlinx.coroutines.flow.Flow
+import tachiyomi.domain.chapter.model.ArchiveReadingProgress
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate
 
 interface ChapterRepository {
+
+    // KMK -->
+    fun getArchiveReadingProgress(sourceId: Long): Flow<List<ArchiveReadingProgress>>
+    // KMK <--
 
     suspend fun addAll(chapters: List<Chapter>): List<Chapter>
 

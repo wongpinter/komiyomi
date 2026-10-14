@@ -21,6 +21,13 @@ val Manga.readingMode: Long
 val Manga.readerOrientation: Long
     get() = viewerFlags and ReaderOrientation.MASK.toLong()
 
+// KMK -->
+internal const val WESTERN_COMIC_READER_FLAG = 1L shl 6
+
+val Manga.westernComicMode: Boolean
+    get() = viewerFlags and WESTERN_COMIC_READER_FLAG != 0L
+// KMK <--
+
 val Manga.downloadedFilter: TriState
     get() {
         if (Injekt.get<BasePreferences>().downloadedOnly().get()) return TriState.ENABLED_IS

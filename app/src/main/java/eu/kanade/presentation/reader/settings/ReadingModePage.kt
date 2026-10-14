@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import eu.kanade.domain.manga.model.readerOrientation
 import eu.kanade.domain.manga.model.readingMode
+import eu.kanade.domain.manga.model.westernComicMode
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsScreenModel
@@ -30,7 +31,20 @@ internal fun ReadingModePage(screenModel: ReaderSettingsScreenModel) {
     HeadingItem(MR.strings.pref_category_for_this_series)
     val manga by screenModel.mangaFlow.collectAsState()
 
-    val readingMode = remember(manga) { ReadingMode.fromPreference(manga?.readingMode?.toInt()) }
+    // KMK -->
+    val westernComicMode = manga?.westernComicMode == true
+    val readingMode = remember(manga) {
+        if (westernComicMode) ReadingMode.LEFT_TO_RIGHT else ReadingMode.fromPreference(manga?.readingMode?.toInt())
+    }
+    SettingsChipRow(KMR.strings.reader_western_comic_mode) {
+        FilterChip(
+            selected = westernComicMode,
+            onClick = { screenModel.onSetWesternComicMode(!westernComicMode) },
+            label = { Text(stringResource(if (westernComicMode) MR.strings.on else MR.strings.off)) },
+        )
+    }
+    Text(stringResource(KMR.strings.reader_western_comic_mode_summary), style = MaterialTheme.typography.bodySmall)
+    // KMK <--
     SettingsChipRow(MR.strings.pref_category_reading_mode) {
         ReadingMode.entries.map {
             FilterChip(

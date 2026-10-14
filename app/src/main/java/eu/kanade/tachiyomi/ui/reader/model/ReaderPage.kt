@@ -19,6 +19,10 @@ open class ReaderPage(
 
     open lateinit var chapter: ReaderChapter
 
+    // KMK -->
+    var archivePath: String? = null
+    // KMK <--
+
     /** Value to check if a page is too wide to be doubled up */
     var fullPage: Boolean = false
         set(value) {

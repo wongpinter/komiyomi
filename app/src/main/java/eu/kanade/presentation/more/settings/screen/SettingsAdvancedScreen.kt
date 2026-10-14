@@ -120,11 +120,10 @@ object SettingsAdvancedScreen : SearchableSettings {
         val navigator = LocalNavigator.currentOrThrow
 
         val basePreferences = remember { Injekt.get<BasePreferences>() }
-        val networkPreferences = remember { Injekt.get<NetworkPreferences>() }
-        val libraryPreferences = remember { Injekt.get<LibraryPreferences>() }
         // SY -->
-        val downloadPreferences = remember { Injekt.get<DownloadPreferences>() }
-        val exhPreferences = remember { Injekt.get<ExhPreferences>() }
+        // KMK -->
+        // Advanced settings are limited to local data, rendering, and diagnostics.
+        // KMK <--
         // SY <--
 
         return listOf(
@@ -150,50 +149,24 @@ object SettingsAdvancedScreen : SearchableSettings {
                 title = stringResource(MR.strings.pref_debug_info),
                 onClick = { navigator.push(DebugInfoScreen()) },
             ),
-            Preference.PreferenceItem.TextPreference(
-                title = stringResource(MR.strings.pref_onboarding_guide),
-                onClick = { navigator.push(OnboardingScreen()) },
-            ),
-            Preference.PreferenceItem.TextPreference(
-                title = stringResource(MR.strings.pref_manage_notifications),
-                onClick = {
-                    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                    }
-                    context.startActivity(intent)
-                },
-            ),
             // KMK -->
-            Preference.PreferenceItem.MultiSelectListPreference(
-                preference = exhPreferences.appShouldAutoUpdate(),
-                entries = persistentMapOf(
-                    AppUpdatePolicy.DEVICE_ONLY_ON_WIFI to stringResource(MR.strings.connected_to_wifi),
-                    AppUpdatePolicy.DEVICE_NETWORK_NOT_METERED to stringResource(MR.strings.network_not_metered),
-                    AppUpdatePolicy.DEVICE_CHARGING to stringResource(MR.strings.charging),
-                    AppUpdatePolicy.DISABLE_AUTO_DOWNLOAD to stringResource(KMR.strings.auto_update_app_disable_auto_download),
-                ),
-                title = stringResource(KMR.strings.auto_update_app),
-                subtitle = stringResource(MR.strings.restrictions),
-                onValueChanged = {
-                    // Post to event looper to allow the preference to be updated.
-                    ContextCompat.getMainExecutor(context).execute { AppUpdateJob.setupTask(context) }
-                    true
-                },
-            ),
+            // Online updates and background download controls are omitted.
             // KMK <--
-            getBackgroundActivityGroup(),
             getDataGroup(),
-            getNetworkGroup(networkPreferences = networkPreferences),
-            getLibraryGroup(libraryPreferences = libraryPreferences),
+            // KMK -->
+            getLibraryGroup(),
+            // KMK <--
             // SY -->
-            getDownloadsGroup(downloadPreferences = downloadPreferences),
+            // KMK -->
+            // There is no downloader in the offline settings menu.
+            // KMK <--
             // SY <--
             getReaderGroup(basePreferences = basePreferences),
-            getExtensionsGroup(basePreferences = basePreferences),
             // SY -->
             // getDownloaderGroup(),
-            getDataSaverGroup(),
-            getDeveloperToolsGroup(),
+            // KMK -->
+            // Network, extension, and source developer settings are omitted.
+            // KMK <--
             // SY <--
         )
     }
@@ -245,14 +218,9 @@ object SettingsAdvancedScreen : SearchableSettings {
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.label_data),
             preferenceItems = persistentListOf(
-                Preference.PreferenceItem.TextPreference(
-                    title = stringResource(MR.strings.pref_invalidate_download_cache),
-                    subtitle = stringResource(MR.strings.pref_invalidate_download_cache_summary),
-                    onClick = {
-                        Injekt.get<DownloadCache>().invalidateCache()
-                        context.toast(MR.strings.download_cache_invalidated)
-                    },
-                ),
+                // KMK -->
+                // Offline page cache controls are in Data and storage.
+                // KMK <--
                 Preference.PreferenceItem.TextPreference(
                     title = stringResource(MR.strings.pref_clear_database),
                     subtitle = stringResource(MR.strings.pref_clear_database_summary),
@@ -355,9 +323,9 @@ object SettingsAdvancedScreen : SearchableSettings {
     }
 
     @Composable
-    private fun getLibraryGroup(
-        libraryPreferences: LibraryPreferences,
-    ): Preference.PreferenceGroup {
+    // KMK -->
+    private fun getLibraryGroup(): Preference.PreferenceGroup {
+        // KMK <--
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
         // KMK -->
@@ -367,10 +335,9 @@ object SettingsAdvancedScreen : SearchableSettings {
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.label_library),
             preferenceItems = persistentListOf(
-                Preference.PreferenceItem.TextPreference(
-                    title = stringResource(MR.strings.pref_refresh_library_covers),
-                    onClick = { MetadataUpdateJob.startNow(context) },
-                ),
+                // KMK -->
+                // Local covers are refreshed by scanning the selected folder.
+                // KMK <--
                 // KMK -->
                 Preference.PreferenceItem.SwitchPreference(
                     preference = uiPreferences.preloadLibraryColor(),
@@ -394,16 +361,9 @@ object SettingsAdvancedScreen : SearchableSettings {
                         }
                     },
                 ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.updateMangaTitles(),
-                    title = stringResource(MR.strings.pref_update_library_manga_titles),
-                    subtitle = stringResource(MR.strings.pref_update_library_manga_titles_summary),
-                ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.disallowNonAsciiFilenames(),
-                    title = stringResource(MR.strings.pref_disallow_non_ascii_filenames),
-                    subtitle = stringResource(MR.strings.pref_disallow_non_ascii_filenames_details),
-                ),
+                // KMK -->
+                // Online metadata and download filename options are omitted.
+                // KMK <--
             ),
         )
     }

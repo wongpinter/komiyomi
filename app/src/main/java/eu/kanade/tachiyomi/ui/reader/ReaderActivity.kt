@@ -65,6 +65,7 @@ import eu.kanade.core.util.ifSourcesLoaded
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.connections.service.ConnectionsPreferences
 import eu.kanade.domain.manga.model.readingMode
+import eu.kanade.domain.manga.model.westernComicMode
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.reader.ChapterListDialog
 import eu.kanade.presentation.reader.DisplayRefreshHost
@@ -331,6 +332,9 @@ class ReaderActivity : BaseActivity() {
                     readerState = viewModel.state,
                     onChangeReadingMode = viewModel::setMangaReadingMode,
                     onChangeOrientation = viewModel::setMangaOrientationType,
+                    // KMK -->
+                    onSetWesternComicMode = viewModel::setWesternComicMode,
+                    // KMK <--
                 )
             }
 
@@ -690,8 +694,17 @@ class ReaderActivity : BaseActivity() {
             chapterTitle = state.currentChapter?.chapter?.name,
             navigateUp = onBackPressedDispatcher::onBackPressed,
             onClickTopAppBar = ::openMangaScreen,
-            bookmarked = state.bookmarked,
-            onToggleBookmarked = viewModel::toggleChapterBookmark,
+            // KMK -->
+            bookmarked = if (state.manga?.source == 0L) state.currentPage - 1 in state.pageBookmarks else state.bookmarked,
+            // KMK <--
+            // KMK -->
+            pageBookmarks = state.pageBookmarks,
+            onTogglePageBookmark = viewModel::toggleCurrentPageBookmark.takeIf { state.manga?.source == 0L },
+            onRemovePageBookmark = viewModel::removePageBookmark,
+            // KMK <--
+            // KMK -->
+            onToggleBookmarked = if (state.manga?.source == 0L) viewModel::toggleCurrentPageBookmark else viewModel::toggleChapterBookmark,
+            // KMK <--
             onOpenInWebView = ::openChapterInWebView.takeIf { isHttpSource },
             onOpenInBrowser = ::openChapterInBrowser.takeIf { isHttpSource },
             onShare = ::shareChapter.takeIf { isHttpSource },
@@ -757,6 +770,9 @@ class ReaderActivity : BaseActivity() {
             },
             onClickShiftPage = ::shiftDoublePages,
             // SY <--
+            // KMK -->
+            archiveSections = state.currentChapter?.archiveSections.orEmpty(),
+            // KMK <--
         )
     }
 
@@ -963,6 +979,11 @@ class ReaderActivity : BaseActivity() {
             binding.viewerContainer.removeAllViews()
         }
         viewModel.onViewerLoaded(newViewer)
+        // KMK -->
+        if (viewModel.state.value.manga?.westernComicMode == true) {
+            (newViewer as? PagerViewer)?.config?.applyWesternComicMode()
+        }
+        // KMK <--
         updateViewerInset(readerPreferences.fullscreen().get(), readerPreferences.drawUnderCutout().get())
         binding.viewerContainer.addView(newViewer.getView())
 

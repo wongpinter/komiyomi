@@ -57,7 +57,9 @@ object SettingsAppearanceScreen : SearchableSettings {
             getDisplayGroup(uiPreferences = uiPreferences),
             // SY -->
             getNavbarGroup(uiPreferences = uiPreferences),
-            getForkGroup(uiPreferences = uiPreferences),
+            // KMK -->
+            getOfflineLibraryAppearanceGroup(uiPreferences),
+            // KMK <--
             // SY <--
         )
     }
@@ -331,14 +333,9 @@ object SettingsAppearanceScreen : SearchableSettings {
         return Preference.PreferenceGroup(
             stringResource(SYMR.strings.pref_category_navbar),
             preferenceItems = persistentListOf(
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = uiPreferences.showNavUpdates(),
-                    title = stringResource(SYMR.strings.pref_hide_updates_button),
-                ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = uiPreferences.showNavHistory(),
-                    title = stringResource(SYMR.strings.pref_hide_history_button),
-                ),
+                // KMK -->
+                // The offline app has a fixed Library/Browse/Settings navigation.
+                // KMK <--
                 Preference.PreferenceItem.SwitchPreference(
                     preference = uiPreferences.bottomBarLabels(),
                     title = stringResource(SYMR.strings.pref_show_bottom_bar_labels),
@@ -347,6 +344,22 @@ object SettingsAppearanceScreen : SearchableSettings {
         )
     }
     // SY <--
+
+    // KMK -->
+    @Composable
+    private fun getOfflineLibraryAppearanceGroup(uiPreferences: UiPreferences): Preference.PreferenceGroup {
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.pref_category_library),
+            preferenceItems = persistentListOf(
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.usePanoramaCoverFlow(),
+                    title = stringResource(KMR.strings.pref_panorama_cover_flow),
+                    subtitle = stringResource(KMR.strings.pref_panorama_cover_flow_summary),
+                ),
+            ),
+        )
+    }
+    // KMK <--
 }
 
 private val DateFormats = listOf(

@@ -1,5 +1,5 @@
 package mihon.core.archive
-
+import android.os.ParcelFileDescriptor
 import me.zhanghai.android.libarchive.Archive
 import me.zhanghai.android.libarchive.ArchiveEntry
 import me.zhanghai.android.libarchive.ArchiveException
@@ -9,8 +9,9 @@ import kotlin.concurrent.Volatile
 import mihon.core.archive.ArchiveEntry as MihonArchiveEntry
 
 class ArchiveInputStream(
-    buffer: Long,
-    size: Long,
+    // KMK -->
+    private val pfd: ParcelFileDescriptor,
+    // KMK <--
     // SY -->
     encrypted: Boolean,
     // SY <--
@@ -32,31 +33,36 @@ class ArchiveInputStream(
             Archive.setCharset(archive, Charsets.UTF_8.name().toByteArray())
             Archive.readSupportFilterAll(archive)
             Archive.readSupportFormatAll(archive)
-            Archive.readOpenMemoryUnsafe(archive, buffer, size)
+            // KMK -->
+            Archive.readOpenFd(archive, pfd.fd, 64 * 1024L)
+            // KMK <--
         } catch (e: ArchiveException) {
             close()
             throw e
         }
     }
 
+    // KMK -->
+    fun hasEncryptedEntries(): Int = Archive.readHasEncryptedEntries(archive)
+
     private val oneByteBuffer = ByteBuffer.allocateDirect(1)
 
     override fun read(): Int {
-        read(oneByteBuffer)
+        oneByteBuffer.clear()
+        Archive.readData(archive, oneByteBuffer)
+        oneByteBuffer.flip()
         return if (oneByteBuffer.hasRemaining()) oneByteBuffer.get().toUByte().toInt() else -1
     }
 
     override fun read(b: ByteArray, off: Int, len: Int): Int {
-        val buffer = ByteBuffer.wrap(b, off, len)
-        read(buffer)
-        return if (buffer.hasRemaining()) buffer.remaining() else -1
-    }
+        if (off < 0 || len < 0 || len > b.size - off) throw IndexOutOfBoundsException()
+        if (len == 0) return 0
 
-    private fun read(buffer: ByteBuffer) {
-        buffer.clear()
+        val buffer = ByteBuffer.wrap(b, off, len)
         Archive.readData(archive, buffer)
-        buffer.flip()
+        return (buffer.position() - off).takeIf { it > 0 } ?: -1
     }
+    // KMK <--
 
     override fun close() {
         synchronized(lock) {
@@ -64,7 +70,13 @@ class ArchiveInputStream(
             isClosed = true
         }
 
-        Archive.readFree(archive)
+        // KMK -->
+        try {
+            Archive.readFree(archive)
+        } finally {
+            pfd.close()
+        }
+        // KMK <--
     }
 
     fun getNextEntry(): MihonArchiveEntry? {

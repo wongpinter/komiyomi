@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- KMK: reuse the localized Komiyomi identity for upstream app-name lookups. -->
+    <item type="string" name="app_name">@string/komiyomi_app_name</item>
+</resources>

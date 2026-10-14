@@ -13,6 +13,7 @@ import eu.kanade.domain.chapter.model.toDbChapter
 import eu.kanade.domain.manga.interactor.SetMangaViewerFlags
 import eu.kanade.domain.manga.model.readerOrientation
 import eu.kanade.domain.manga.model.readingMode
+import eu.kanade.domain.manga.model.westernComicMode
 import eu.kanade.domain.source.interactor.GetIncognitoState
 import eu.kanade.domain.sync.SyncPreferences
 import eu.kanade.domain.track.interactor.TrackChapter
@@ -51,6 +52,8 @@ import eu.kanade.tachiyomi.util.lang.byteSize
 import eu.kanade.tachiyomi.util.storage.DiskUtil
 import eu.kanade.tachiyomi.util.storage.DiskUtil.MAX_FILE_NAME_BYTES
 import eu.kanade.tachiyomi.util.storage.cacheImageDir
+import eu.kanade.tachiyomi.util.system.toast
+import exh.log.xLogE
 import exh.metadata.metadata.RaisedSearchMetadata
 import exh.source.MERGED_SOURCE_ID
 import exh.source.getMainSource
@@ -74,6 +77,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import logcat.LogPriority
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.storage.UniFileTempFileManager
@@ -87,8 +95,13 @@ import tachiyomi.decoder.ImageDecoder
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.chapter.interactor.GetMergedChaptersByMangaId
 import tachiyomi.domain.chapter.interactor.UpdateChapter
+import tachiyomi.domain.chapter.model.ARCHIVE_PAGE_BOOKMARKS
+import tachiyomi.domain.chapter.model.ARCHIVE_PAGE_COUNT
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate
+import tachiyomi.domain.chapter.model.archivePageBookmarks
+import tachiyomi.domain.chapter.model.archivePageCount
+import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.chapter.service.getChapterSort
 import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.history.interactor.GetNextChapters
@@ -360,7 +373,11 @@ class ReaderViewModel @JvmOverloads constructor(
                 if (chapterPageIndex >= 0) {
                     // Restore from SavedState
                     currentChapter.requestedPage = chapterPageIndex
-                } else if (!currentChapter.chapter.read) {
+                } else if (
+                    // KMK -->
+                    !currentChapter.chapter.read || manga?.isLocal() == true
+                    // KMK <--
+                ) {
                     currentChapter.requestedPage = currentChapter.chapter.last_page_read
                 }
                 chapterId = currentChapter.chapter.id!!
@@ -554,6 +571,9 @@ class ReaderViewModel @JvmOverloads constructor(
                 it.copy(
                     viewerChapters = newChapters,
                     bookmarked = newChapters.currChapter.chapter.bookmark,
+                    // KMK -->
+                    pageBookmarks = newChapters.currChapter.chapter.memo.archivePageBookmarks(),
+                    // KMK <--
                 )
             }
         }
@@ -662,6 +682,57 @@ class ReaderViewModel @JvmOverloads constructor(
         eventChannel.trySend(Event.ReloadViewerChapters)
     }
 
+    // KMK -->
+    private val archiveMetadataMutex = Mutex()
+
+    private suspend fun saveArchivePageCount(readerChapter: ReaderChapter) {
+        if (manga?.source != 0L || incognitoMode) return
+        val count = readerChapter.pages?.size ?: return
+        try {
+            archiveMetadataMutex.withLock {
+                val chapter = readerChapter.chapter
+                if (chapter.memo.archivePageCount() != count) {
+                    val memo = JsonObject(chapter.memo + (ARCHIVE_PAGE_COUNT to JsonPrimitive(count)))
+                    Injekt.get<ChapterRepository>().update(ChapterUpdate(id = chapter.id!!, memo = memo))
+                    chapter.memo = memo
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            xLogE("Unable to save archive page count", e)
+        }
+    }
+
+    fun toggleCurrentPageBookmark() = changePageBookmark(state.value.currentPage - 1, false)
+
+    fun removePageBookmark(page: Int) = changePageBookmark(page, true)
+
+    private fun changePageBookmark(page: Int, removeOnly: Boolean) {
+        val readerChapter = getCurrentChapter() ?: return
+        if (manga?.source != 0L || page !in 0 until (readerChapter.pages?.size ?: 0)) return
+        viewModelScope.launchNonCancellable {
+            try {
+                archiveMetadataMutex.withLock {
+                    val chapter = readerChapter.chapter
+                    val pages = chapter.memo.archivePageBookmarks().toMutableSet()
+                    if (removeOnly || page in pages) pages.remove(page) else pages.add(page)
+                    val sorted = pages.sorted()
+                    val memo = JsonObject(chapter.memo + (ARCHIVE_PAGE_BOOKMARKS to JsonArray(sorted.map { JsonPrimitive(it) })))
+                    Injekt.get<ChapterRepository>().update(ChapterUpdate(id = chapter.id!!, memo = memo))
+                    chapter.memo = memo
+                    mutableState.update { if (it.currentChapter == readerChapter) it.copy(pageBookmarks = sorted) else it }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                xLogE("Unable to save page bookmark", e)
+                withUIContext { Injekt.get<Application>().toast(tachiyomi.i18n.kmk.KMR.strings.offline_bookmark_save_failed) }
+            }
+        }
+    }
+    // KMK <--
+
     fun onViewerLoaded(viewer: Viewer?) {
         mutableState.update {
             it.copy(viewer = viewer)
@@ -688,7 +759,10 @@ class ReaderViewModel @JvmOverloads constructor(
 
         // Save last page read and mark as read if needed
         viewModelScope.launchNonCancellable {
+            // KMK -->
             updateChapterProgress(selectedChapter, page/* SY --> */, hasExtraPage/* SY <-- */)
+            saveArchivePageCount(selectedChapter)
+            // KMK <--
         }
 
         if (selectedChapter != getCurrentChapter()) {
@@ -1004,6 +1078,9 @@ class ReaderViewModel @JvmOverloads constructor(
     fun getMangaReadingMode(resolveDefault: Boolean = true): Int {
         val default = readerPreferences.defaultReadingMode().get()
         val manga = manga ?: return default
+        // KMK -->
+        if (manga.westernComicMode) return ReadingMode.LEFT_TO_RIGHT.flagValue
+        // KMK <--
         val readingMode = ReadingMode.fromPreference(manga.readingMode.toInt())
         // SY -->
         return when {
@@ -1040,6 +1117,26 @@ class ReaderViewModel @JvmOverloads constructor(
             }
         }
     }
+
+    // KMK -->
+    fun setWesternComicMode(enabled: Boolean) {
+        val manga = manga ?: return
+        viewModelScope.launchIO {
+            setMangaViewerFlags.awaitSetWesternComicMode(manga.id, enabled)
+            val currChapters = state.value.viewerChapters
+            val updatedManga = getManga.await(manga.id)
+            if (currChapters != null) {
+                currChapters.currChapter.requestedPage = currChapters.currChapter.chapter.last_page_read
+                mutableState.update {
+                    it.copy(manga = updatedManga, viewerChapters = currChapters)
+                }
+                eventChannel.send(Event.ReloadViewerChapters)
+            } else {
+                mutableState.update { it.copy(manga = updatedManga) }
+            }
+        }
+    }
+    // KMK <--
 
     /**
      * Returns the orientation type used by this manga or the default one.
@@ -1471,6 +1568,9 @@ class ReaderViewModel @JvmOverloads constructor(
         val manga: Manga? = null,
         val viewerChapters: ViewerChapters? = null,
         val bookmarked: Boolean = false,
+        // KMK -->
+        val pageBookmarks: List<Int> = emptyList(),
+        // KMK <--
         val isLoadingAdjacentChapter: Boolean = false,
         val currentPage: Int = -1,
 

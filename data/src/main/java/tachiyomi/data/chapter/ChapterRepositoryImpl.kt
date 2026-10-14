@@ -6,14 +6,24 @@ import tachiyomi.core.common.util.lang.toLong
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.data.DatabaseHandler
 import tachiyomi.data.MemoColumnAdapter
+import tachiyomi.domain.chapter.model.ArchiveReadingProgress
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate
+import tachiyomi.domain.chapter.model.archivePageCount
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.manga.model.Manga
 
 class ChapterRepositoryImpl(
     private val handler: DatabaseHandler,
 ) : ChapterRepository {
+
+    // KMK -->
+    override fun getArchiveReadingProgress(sourceId: Long): Flow<List<ArchiveReadingProgress>> = handler.subscribeToList {
+        chaptersQueries.getArchiveReadingProgress(sourceId) { id, mangaId, url, read, lastPage, memo, lastRead ->
+            ArchiveReadingProgress(id, mangaId, url, read, lastPage, memo.archivePageCount(), lastRead)
+        }
+    }
+    // KMK <--
 
     override suspend fun addAll(chapters: List<Chapter>): List<Chapter> {
         return try {

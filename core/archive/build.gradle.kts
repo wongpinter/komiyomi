@@ -15,5 +15,7 @@ dependencies {
     // KMK -->
     implementation(projects.core.common)
     implementation(libs.injekt)
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
     // KMK <--
 }

@@ -94,7 +94,9 @@ object SettingsSecurityScreen : SearchableSettings {
 
         val scope = rememberCoroutineScope()
         val isCbzPasswordSet by remember { CbzCrypto.isPasswordSetState(scope) }.collectAsState()
-        val passwordProtectDownloads by securityPreferences.passwordProtectDownloads().collectAsState()
+        // KMK -->
+        // Keep the archive password for reading encrypted local files.
+        // KMK <--
 
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pref_security),
@@ -141,21 +143,9 @@ object SettingsSecurityScreen : SearchableSettings {
                     title = stringResource(MR.strings.secure_screen),
                 ),
                 // SY -->
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = securityPreferences.passwordProtectDownloads(),
-                    title = stringResource(SYMR.strings.password_protect_downloads),
-                    subtitle = stringResource(SYMR.strings.password_protect_downloads_summary),
-                    enabled = isCbzPasswordSet,
-                ),
-                Preference.PreferenceItem.ListPreference(
-                    preference = securityPreferences.encryptionType(),
-                    entries = SecurityPreferences.EncryptionType.entries
-                        .associateWith { stringResource(it.titleRes) }
-                        .toImmutableMap(),
-                    title = stringResource(SYMR.strings.encryption_type),
-                    enabled = passwordProtectDownloads,
-
-                ),
+                // KMK -->
+                // Creating encrypted downloads is not part of the offline reader.
+                // KMK <--
                 run {
                     var dialogOpen by remember { mutableStateOf(false) }
                     if (dialogOpen) {

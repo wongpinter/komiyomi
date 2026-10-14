@@ -64,7 +64,9 @@ object SettingsLibraryScreen : SearchableSettings {
 
         return listOf(
             getCategoriesGroup(LocalNavigator.currentOrThrow, allCategories, libraryPreferences),
-            getGlobalUpdateGroup(allCategories, libraryPreferences),
+            // KMK -->
+            // Scheduled source updates are not used by the local library.
+            // KMK <--
             getBehaviorGroup(libraryPreferences),
             // SY -->
             getSortingCategory(LocalNavigator.currentOrThrow, libraryPreferences),
@@ -254,8 +256,9 @@ object SettingsLibraryScreen : SearchableSettings {
                             stringResource(MR.strings.action_bookmark),
                         LibraryPreferences.ChapterSwipeAction.ToggleRead to
                             stringResource(MR.strings.action_mark_as_read),
-                        LibraryPreferences.ChapterSwipeAction.Download to
-                            stringResource(MR.strings.action_download),
+                        // KMK -->
+                        // Local archives have no download action.
+                        // KMK <--
                     ),
                     title = stringResource(MR.strings.pref_chapter_swipe_start),
                 ),
@@ -268,8 +271,9 @@ object SettingsLibraryScreen : SearchableSettings {
                             stringResource(MR.strings.action_bookmark),
                         LibraryPreferences.ChapterSwipeAction.ToggleRead to
                             stringResource(MR.strings.action_mark_as_read),
-                        LibraryPreferences.ChapterSwipeAction.Download to
-                            stringResource(MR.strings.action_download),
+                        // KMK -->
+                        // Local archives have no download action.
+                        // KMK <--
                     ),
                     title = stringResource(MR.strings.pref_chapter_swipe_end),
                 ),
@@ -283,24 +287,13 @@ object SettingsLibraryScreen : SearchableSettings {
                     ),
                     title = stringResource(MR.strings.pref_mark_duplicate_read_chapter_read),
                 ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.hideMissingChapters(),
-                    title = stringResource(MR.strings.pref_hide_missing_chapter_indicators),
-                ),
+                // KMK -->
+                // Missing online chapters are not relevant to local archives.
+                // KMK <--
                 // KMK -->
                 Preference.PreferenceItem.SwitchPreference(
                     preference = libraryPreferences.showEmptyCategoriesSearch(),
                     title = stringResource(KMR.strings.pref_show_empty_categories_search),
-                ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.fetchMetadataOnAdd(),
-                    title = stringResource(KMR.strings.pref_fetch_manga_metadata_on_add),
-                    subtitle = stringResource(KMR.strings.pref_fetch_manga_metadata_on_add_description),
-                ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.fetchChaptersOnAdd(),
-                    title = stringResource(KMR.strings.pref_fetch_manga_chapters_on_add),
-                    subtitle = stringResource(KMR.strings.pref_fetch_manga_chapters_on_add_description),
                 ),
                 // KMK <--
             ),

@@ -1,7 +1,8 @@
 package eu.kanade.tachiyomi.ui.reader.loader
 
-import android.app.Application
+import android.os.SystemClock
 import com.hippo.unifile.UniFile
+import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
@@ -15,20 +16,46 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import mihon.core.archive.ArchiveReader
 import tachiyomi.core.common.util.system.ImageUtil
+import tachiyomi.core.common.util.system.logcat
 import uy.kohesive.injekt.injectLazy
-import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Loader used to load a chapter from an archive file.
  */
-internal class ArchivePageLoader(private val reader: ArchiveReader) : PageLoader() {
+internal class ArchivePageLoader(
+    private val reader: ArchiveReader,
+    // KMK -->
+    private val archiveFile: UniFile,
+    private val cacheOfflinePages: Boolean = false,
+    // KMK <--
+) : PageLoader() {
     // SY -->
     private val mutex = Mutex()
-    private val context: Application by injectLazy()
     private val readerPreferences: ReaderPreferences by injectLazy()
-    private val tmpDir = File(context.externalCacheDir, "reader_${reader.archiveHashCode}").also {
-        it.deleteRecursively()
+    // KMK -->
+    private val chapterCache: ChapterCache by injectLazy()
+    private val firstPageCacheStatusLogged = AtomicBoolean()
+    private val archiveCacheKeyPrefix by lazy {
+        "local-archive-v2:${archiveFile.uri}:${reader.size}:${archiveFile.lastModified()}:"
     }
+    // KMK <--
+    // SY -->
+    // KMK -->
+    // Page caching is lazy and bounded, so don't extract the entire archive first.
+    private val archiveReaderMode = readerPreferences.archiveReaderMode().get().let { mode ->
+        if (
+            reader.size <= 0 ||
+            reader.size > 64L * 1024 * 1024 ||
+            mode == ReaderPreferences.ArchiveReaderMode.CACHE_TO_DISK
+        ) {
+            ReaderPreferences.ArchiveReaderMode.LOAD_FROM_FILE
+        } else {
+            mode
+        }
+    }
+    // KMK <--
+    // SY <--
 
     init {
         reader.wrongPassword?.let { wrongPassword ->
@@ -36,65 +63,72 @@ internal class ArchivePageLoader(private val reader: ArchiveReader) : PageLoader
                 error("Incorrect archive password")
             }
         }
-        if (readerPreferences.archiveReaderMode().get() == ReaderPreferences.ArchiveReaderMode.CACHE_TO_DISK) {
-            tmpDir.mkdirs()
-            reader.useEntries { entries ->
-                entries
-                    .filter { it.isFile && ImageUtil.isImage(it.name) { reader.getInputStream(it.name)!! } }
-                    .sortedWith { f1, f2 -> f1.name.compareToCaseInsensitiveNaturalOrder(f2.name) }
-                    .forEach { entry ->
-                        File(tmpDir, entry.name.substringAfterLast("/"))
-                            .also { it.createNewFile() }
-                            .outputStream()
-                            .use { output ->
-                                reader.getInputStream(entry.name)?.use { input ->
-                                    input.copyTo(output)
-                                }
-                            }
-                    }
-            }
-        }
     }
     // SY <--
 
     override var isLocal: Boolean = true
 
-    override suspend fun getPages(): List<ReaderPage> = reader.useEntries { entries ->
-        // SY -->
-        if (readerPreferences.archiveReaderMode().get() == ReaderPreferences.ArchiveReaderMode.CACHE_TO_DISK) {
-            return DirectoryPageLoader(UniFile.fromFile(tmpDir)!!).getPages()
-        }
-        // SY <--
-        entries
-            .filter { it.isFile && ImageUtil.isImage(it.name) { reader.getInputStream(it.name)!! } }
-            .sortedWith { f1, f2 -> f1.name.compareToCaseInsensitiveNaturalOrder(f2.name) }
-            .mapIndexed { i, entry ->
-                // SY -->
-                val imageBytesDeferred: Deferred<ByteArray>? =
-                    when (readerPreferences.archiveReaderMode().get()) {
-                        ReaderPreferences.ArchiveReaderMode.LOAD_INTO_MEMORY -> {
-                            CoroutineScope(Dispatchers.IO).async {
-                                mutex.withLock {
-                                    reader.getInputStream(entry.name)!!.buffered().use { stream ->
-                                        stream.readBytes()
+    // SY -->
+    // KMK -->
+    override suspend fun getPages(): List<ReaderPage> {
+        val pageListStartedAt = SystemClock.elapsedRealtime()
+        val pages = reader.useEntries { entries ->
+            entries
+                .filter { it.isFile && ImageUtil.isImage(it.name) { reader.getInputStream(it.name)!! } }
+                .sortedWith { f1, f2 -> f1.name.compareToCaseInsensitiveNaturalOrder(f2.name) }
+                .mapIndexed { i, entry ->
+                    // SY -->
+                    val imageBytesDeferred: Deferred<ByteArray>? =
+                        // KMK -->
+                        when (archiveReaderMode) {
+                            ReaderPreferences.ArchiveReaderMode.LOAD_INTO_MEMORY -> {
+                                CoroutineScope(Dispatchers.IO).async {
+                                    mutex.withLock {
+                                        reader.getInputStream(entry.name)!!.buffered().use { stream ->
+                                            stream.readBytes()
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        else -> null
-                    }
-                val imageBytes by lazy { runBlocking { imageBytesDeferred?.await() } }
-                // SY <--
-                ReaderPage(i).apply {
-                    // SY -->
-                    stream = { imageBytes?.copyOf()?.inputStream() ?: reader.getInputStream(entry.name)!! }
+                            else -> null
+                        }
+                    // KMK <--
+                    val imageBytes by lazy { runBlocking { imageBytesDeferred?.await() } }
                     // SY <--
-                    status = Page.State.Ready
+                    ReaderPage(i).apply {
+                        // KMK -->
+                        archivePath = entry.name
+                        stream = {
+                            val cacheKey = archiveCacheKeyPrefix + entry.name
+                            if (cacheOfflinePages) {
+                                if (i == 0 && firstPageCacheStatusLogged.compareAndSet(false, true)) {
+                                    logcat { "Local archive first-page cache hit=${chapterCache.isArchiveImageInCache(cacheKey)}" }
+                                }
+                                chapterCache.getOrPutArchiveImageStream(cacheKey) {
+                                    imageBytes?.copyOf()?.inputStream() ?: reader.getInputStream(entry.name)!!
+                                }
+                            } else {
+                                chapterCache.getOrPutImageStream(cacheKey) {
+                                    imageBytes?.copyOf()?.inputStream() ?: reader.getInputStream(entry.name)!!
+                                }
+                            }
+                        }
+                        // KMK <--
+                        status = Page.State.Ready
+                    }
                 }
+                .toList()
+        }
+        if (cacheOfflinePages) {
+            logcat {
+                "Local archive page list ready: pages=${pages.size} elapsedMs=${SystemClock.elapsedRealtime() - pageListStartedAt}"
             }
-            .toList()
+        }
+        return pages
     }
+    // KMK <--
+    // SY <--
 
     override suspend fun loadPage(page: ReaderPage) {
         check(!isRecycled)
@@ -104,7 +138,9 @@ internal class ArchivePageLoader(private val reader: ArchiveReader) : PageLoader
         super.recycle()
         reader.close()
         // SY -->
-        tmpDir.deleteRecursively()
+        // KMK -->
+        // Persistent page caching is managed by ChapterCache.
+        // KMK <--
         // SY <--
     }
 }

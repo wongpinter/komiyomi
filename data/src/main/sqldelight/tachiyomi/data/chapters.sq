@@ -56,6 +56,16 @@ SELECT *
 FROM chapters
 WHERE _id = :id;
 
+-- KMK -->
+getArchiveReadingProgress:
+SELECT C._id, C.manga_id, C.url, C.read, C.last_page_read, C.memo,
+       coalesce(CAST(H.last_read AS INTEGER), 0) AS last_read
+FROM chapters C
+JOIN mangas M ON M._id = C.manga_id
+LEFT JOIN history H ON H.chapter_id = C._id
+WHERE M.source = :sourceId;
+-- KMK <--
+
 getChaptersByMangaId:
 SELECT C.*
 FROM chapters C
